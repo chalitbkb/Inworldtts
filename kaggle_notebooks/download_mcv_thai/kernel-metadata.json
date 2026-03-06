@@ -1,0 +1,15 @@
+{
+  "id": "chalitguza/download-mcv-thai-v24",
+  "title": "Download Mozilla Common Voice Thai v24.0",
+  "code_file": "download_mcv_thai.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "false",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
