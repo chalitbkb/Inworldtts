@@ -89,8 +89,21 @@ uv pip install vllm==0.10.0
 
 ## Training Example
 
-In order to train a SpeechLM you need to first vectorize your audio-data into the audio-codes.
-Combined together with the transcript, the model learns how being conditioned on it generates the audio.
+### 💡 Beginner's Overview: How This TTS System Works
+
+If you are new to Text-To-Speech (TTS), here is a simple breakdown of the entire process:
+
+**Phase 1 — Training (Building the Brain):**
+You teach the AI how a language sounds by feeding it many audio clips paired with their exact text transcripts. Think of it as giving the AI thousands of "flashcards" — on one side is the written sentence, and on the other side is the audio of someone reading it aloud. After training, the AI has a "Base Model" (a `.pt` file) that understands how to convert text into natural-sounding speech.
+
+**Phase 2 — Inference & Voice Cloning (Using the Brain):**
+Once the model is trained, you can use it to generate speech. The most powerful feature is **Zero-shot Voice Cloning**: you provide a short 3-10 second audio clip of *any* person's voice, and the AI will instantly clone that person's voice characteristics — including their **timbre (tone quality), emotion, and recording quality** — to speak *new* sentences that you type in.
+
+> **Key insight:** The audio data you use for *training* does NOT need to come from the person you want to clone. Training teaches the AI *how language sounds*. Cloning happens at inference time using just a short audio sample.
+
+**No Phoneme Dictionary Required:**
+Unlike traditional TTS systems that require language-specific pronunciation dictionaries, this system uses LLaMA's BPE tokenizer which handles any language's characters natively (including Thai, Chinese, Japanese, etc.). This means you can train on *any* language without building custom pronunciation rules.
+
 Below example shows how to get started with a simple SFT training.
 
 ### 1. Data Preparation
@@ -108,11 +121,36 @@ Process your raw audio dataset into a JSONL file where each line contains a samp
 ```
 
 **Required fields:**
-* `transcript`: Text transcription of the audio
-* `language`: Language code (e.g., "en" for English, "th" for Thai)
-* `wav_path`: Absolute path to the audio file
+* `transcript`: Text transcription of the audio — **must match the audio exactly, word-for-word**
+* `language`: Language code (e.g., `"en"` for English, `"th"` for Thai, `"zh"` for Chinese)
+* `wav_path`: Absolute path to the audio file (`.wav` format)
 * `duration`: Audio duration in seconds
-* `sample_rate`: Audio sample rate in Hz
+* `sample_rate`: Audio sample rate in Hz (recommended: 24000 Hz or higher)
+
+#### 📋 Data Preparation Tips
+
+> **Audio Quality:**
+> - Audio does **NOT** need to be studio-quality — recordings from a decent microphone in a quiet room are sufficient
+> - However, the speech must be **clear and intelligible** with minimal background noise
+> - Minimum sample rate: **24000 Hz (24kHz)**. Lower rates may degrade high-frequency voice characteristics
+>
+> **Duration:**
+> - Each audio clip should be **1 to 30 seconds** long. Clips longer than 30 seconds will be automatically filtered out
+> - Short, single-sentence clips work best
+>
+> **Transcript Accuracy:**
+> - The transcript **must match the audio exactly** — every word, in the correct order
+> - Inaccurate transcripts will confuse the model and produce poor results
+>
+> **Speaker Diversity:**
+> - Using audio from **many different speakers** (multi-speaker dataset) significantly improves the model's ability to clone new voices at inference time
+> - Recommended minimum: **10+ hours** of audio data for fine-tuning
+>
+> **Important Note about Voice Cloning Quality:**
+> - The quality of the *output* voice during inference (voice cloning) is determined by the **prompt audio you provide at inference time**, NOT by the training data quality
+> - If your prompt audio is recorded in a professional studio → the cloned output will sound studio-quality
+> - If your prompt audio has background noise → the cloned output may also have noise
+> - The training data teaches the AI *how to speak the language*; the prompt audio determines *whose voice and quality to use*
 
 ### 1.1 Adding New Languages
 
@@ -251,9 +289,20 @@ fabric run --devices=$NUM_GPU tts/training/main.py \
 
 After training completes, you'll find the trained model at `./experiments/my_tts_training/final_model.pt` along with model and tokenizer configuration files.
 
-**Additional options:**
-* `--dry_run`: Test pipeline without training
-* `--compile_model`: Enable torch.compile optimization (works well only if all your batch' samples have the same length)
+#### Understanding Training Output
+
+The training process produces the following files in `./experiments/<your_run_name>/`:
+
+```
+./experiments/my_tts_training/
+├── final_model.pt              # The trained model checkpoint ("the brain")
+├── training_config.json        # Copy of the config used for training
+├── tokenizer.json              # Tokenizer configuration
+├── tokenizer_config.json       # Additional tokenizer settings
+└── generations/                # Audio samples generated during training (for quality monitoring)
+```
+
+> **⚠️ Important:** The `final_model.pt` file **cannot** be used directly for inference. You must first convert it to a "serving format" using the `convert_checkpoint.py` tool in Step 6-1 below. Think of it like raw footage that needs to be exported before it can be played.
 
 ### 6. RLHF Training
 
@@ -355,13 +404,25 @@ Track progress via:
 * **Checkpoints**: Saved every `save_steps` iterations
 * **Console logs**: Real-time training information
 
-## Inference
+## Inference (Zero-shot Voice Cloning)
 
-Once you have a trained model, you can use it for inference to generate speech from text and an audio prompt.
+Once you have a trained model (converted to serving format), you can use it for inference to generate speech from any text.
+
+### 💡 How Zero-shot Voice Cloning Works
+
+You do **not** need to train a separate model for every voice. Instead, you provide a short **3-10 second** audio clip of the target speaker (the "Prompt Audio"). The AI analyzes this clip and extracts:
+
+- **Timbre (Tone Quality):** The unique characteristics that make a voice recognizable
+- **Emotion & Prosody:** The mood, speaking pace, and intonation in the prompt
+- **Acoustic Environment:** If your prompt was recorded in a studio, the output will also sound studio-quality. If the prompt has echo or noise, the output may inherit those qualities too
+
+The AI then uses all of this to generate *new* speech that sounds like the same person speaking naturally.
+
+### Usage
 
 Use the provided inference script for easy speech generation:
 
-**Standard PyTorch inference:**
+**Standard PyTorch inference (English example):**
 ```bash
 python tools/serving/inference.py \
     --model_checkpoint_path /path/to/your/serving/model \
@@ -372,6 +433,30 @@ python tools/serving/inference.py \
     --text "Hello, this is a test of the text-to-speech system." \
     --output_path ./audios/output.wav
 ```
+
+**Thai language example (ภาษาไทย):**
+```bash
+python tools/serving/inference.py \
+    --model_checkpoint_path /path/to/your/serving/model \
+    --audio_encoder_path /path/to/encoder.pt \
+    --audio_decoder_path /path/to/decoder.pt \
+    --prompt_wav_path /path/to/thai_speaker.wav \
+    --prompt_transcription "สวัสดีครับ ยินดีต้อนรับ" \
+    --text "วันนี้อากาศดีมากครับ ไปเที่ยวกันไหม" \
+    --output_path ./audios/thai_output.wav
+```
+
+**Inference arguments explained:**
+
+| Argument | Description |
+|----------|-------------|
+| `--model_checkpoint_path` | Path to your converted serving model (from `convert_checkpoint.py`) |
+| `--audio_encoder_path` | Path to the audio codec encoder (`.pt` file) |
+| `--audio_decoder_path` | Path to the audio codec decoder (`.pt` file, needs `model_config.json` in same directory) |
+| `--prompt_wav_path` | A short 3-10 second `.wav` clip of the voice you want to clone |
+| `--prompt_transcription` | The **exact** transcript of what is spoken in the prompt audio clip |
+| `--text` | The **new** text you want the cloned voice to speak |
+| `--output_path` | Where to save the generated audio file |
 
 **vLLM inference (faster):**
 ```bash
@@ -395,6 +480,29 @@ python tools/serving/inference.py \
 - Prompt transcription (text of what's spoken in the audio prompt)
 
 **Note:** If you don't want to retrain the decoder, you can use the same checkpoint from [xcodec2](https://huggingface.co/HKUSTAudio/xcodec2/tree/main/ckpt) for both encoder and decoder paths. We provided a xcodec2 compatible `model_config.json` file in `./example/codec`.
+
+## ❓ FAQ — Frequently Asked Questions
+
+**Q: Does my training audio need to be studio quality?**
+A: No. The training audio just needs to be clear and intelligible with the transcript matching exactly. Recordings from a decent microphone in a quiet room are sufficient. Studio quality is only important for the *prompt audio* you use during inference (voice cloning).
+
+**Q: Will the output voice match the quality of my prompt audio?**
+A: Yes. The model copies the timbre, emotion, and acoustic environment from the prompt audio. A studio-recorded prompt produces studio-quality output. A noisy prompt may produce noisy output.
+
+**Q: Do I need a phoneme dictionary or pronunciation rules for my language?**
+A: No. This system uses LLaMA's BPE tokenizer, which is language-agnostic. It handles characters from any language (Thai, Chinese, Arabic, etc.) natively without custom pronunciation rules.
+
+**Q: What languages are supported?**
+A: Any language that has audio data with transcripts. The system is data-driven — if you can provide `.wav` files with matching text transcripts, you can train a model for that language. See the [Adding New Languages](#11-adding-new-languages) section for configuration details.
+
+**Q: Where is the trained model saved?**
+A: The trained model is saved at `./experiments/<your_run_name>/final_model.pt`. You must convert it using `convert_checkpoint.py` before using it for inference.
+
+**Q: How much training data do I need?**
+A: For fine-tuning, we recommend a minimum of **10+ hours** of audio data. More data with diverse speakers will produce better voice cloning results.
+
+**Q: Can I clone any voice without training on that specific person?**
+A: Yes! That's the "Zero-shot" feature. After training on a general dataset, you can clone *any* voice by providing just a 3-10 second audio sample at inference time — even voices the model has never heard before.
 
 ## Development
 
