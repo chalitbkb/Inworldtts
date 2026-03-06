@@ -132,6 +132,11 @@ else:
         for f in files:
             if f == "validated.tsv":
                 tsv_candidates.append(os.path.join(root, f))
+                
+    # Free up space by deleting the 8GB tar archive immediately
+    if os.path.exists(tar_path):
+        print("Freeing up disk space: Deleting tar.gz archive...")
+        os.remove(tar_path)
 
 if not tsv_candidates:
     print("Error: Could not find validated.tsv after extraction!")
@@ -168,12 +173,13 @@ if MAX_CLIPS and MAX_CLIPS < len(df):
     df = df.head(MAX_CLIPS)
 
 # ==============================================================================
-# Step 4: Convert MP3 -> WAV (24000Hz, mono)
+# Step 4: Convert MP3 -> WAV (24000Hz, mono) and cleanup MP3s
 # ==============================================================================
 
 print("\n" + "=" * 60)
 print(f"Step 4: Converting {len(df)} MP3 files to WAV ({TARGET_SAMPLE_RATE}Hz)")
 print("=" * 60)
+print("Note: Original MP3 files will be deleted immediately after conversion to save disk space.")
 
 os.makedirs(OUTPUT_WAV_DIR, exist_ok=True)
 
@@ -198,20 +204,22 @@ for idx, row in df.iterrows():
         jsonl_lines.append(
             json.dumps(
                 {
-                    "audio_filepath": wav_path,
-                    "text": str(row["sentence"]),
+                    "transcript": str(row["sentence"]),
                     "language": "th",
+                    "wav_path": wav_path,
+                    "duration": 5.0, # Approximate/fallback for skipped ones
+                    "sample_rate": TARGET_SAMPLE_RATE
                 },
                 ensure_ascii=False,
             )
         )
+        # Still try to delete mp3 if it somehow exists to save space
+        if os.path.exists(mp3_path):
+            os.remove(mp3_path)
         continue
 
-    # Convert using ffmpeg
-    if not os.path.exists(mp3_path):
-        failed += 1
-        continue
-
+    # Prepare to extract duration with ffprobe if conversion succeeds
+    
     result = subprocess.run(
         [
             "ffmpeg", "-y", "-i", mp3_path,
@@ -224,17 +232,42 @@ for idx, row in df.iterrows():
     )
 
     if result.returncode == 0:
+        # Get exact duration using ffprobe
+        probe_result = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", wav_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        try:
+            duration = float(probe_result.stdout.strip())
+        except ValueError:
+            duration = 0.0 # fallback
+
+        # Filter out clips over 30 seconds per README spec
+        if duration > 30.0:
+            failed += 1
+            if os.path.exists(wav_path):
+                os.remove(wav_path)
+            if os.path.exists(mp3_path):
+                os.remove(mp3_path)
+            continue
+
         successful += 1
         jsonl_lines.append(
             json.dumps(
                 {
-                    "audio_filepath": wav_path,
-                    "text": str(row["sentence"]),
+                    "transcript": str(row["sentence"]),
                     "language": "th",
+                    "wav_path": wav_path,
+                    "duration": round(duration, 2),
+                    "sample_rate": TARGET_SAMPLE_RATE
                 },
                 ensure_ascii=False,
             )
         )
+        # Delete MP3 after successful conversion to free up Kaggle disk space
+        os.remove(mp3_path)
     else:
         failed += 1
 

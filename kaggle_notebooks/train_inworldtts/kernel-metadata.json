@@ -1,0 +1,17 @@
+{
+  "id": "chalitguza/train-inworldtts-auto-clone-fixed",
+  "title": "Train InworldTTS (Auto Clone Fixed)",
+  "code_file": "train_inworldtts.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [
+    "chalitguza/download-mozilla-common-voice-thai-exact-format"
+  ],
+  "model_sources": []
+}

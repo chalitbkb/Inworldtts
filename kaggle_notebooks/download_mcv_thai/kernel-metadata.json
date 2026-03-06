@@ -1,6 +1,6 @@
 {
-  "id": "chalitguza/download-mcv-thai-v24",
-  "title": "Download Mozilla Common Voice Thai v24.0",
+  "id": "chalitguza/download-mcv-thai-exact-format",
+  "title": "Download Mozilla Common Voice Thai (Exact Format)",
   "code_file": "download_mcv_thai.py",
   "language": "python",
   "kernel_type": "script",

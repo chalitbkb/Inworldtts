@@ -267,7 +267,7 @@ Create training config ( `./example/configs/sft.json` ). Below shows key configu
         "parameters": {
             "codebook_size": 65536,
             "max_seq_len": 2048,
-            "model_name": "meta-llama/Llama-3.2-1B-Instruct",
+            "model_name": "meta-llama/Llama-3.2-3B-Instruct",
             "enable_text_normalization": true
         }
     },
