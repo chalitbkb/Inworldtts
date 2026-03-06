@@ -12,7 +12,7 @@ from tts.core import constants, lora
 from tts.data import caching
 from tts.utils import configuration
 
-_ATTN_IMPLEMENTATION = "flash_attention_2"
+_ATTN_IMPLEMENTATION = "sdpa"
 
 
 def _str_to_torch_dtype(dtype: str) -> torch.dtype:
