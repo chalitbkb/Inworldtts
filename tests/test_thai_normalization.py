@@ -226,6 +226,47 @@ class TestNormalizeThaiTextMaiYamok(unittest.TestCase):
 
 
 @unittest.skipUnless(_HAS_PYTHAINLP, "pythainlp not installed")
+class TestNormalizeThaiTextCurrency(unittest.TestCase):
+    """Stage 7: Currency position normalization."""
+
+    def test_baht_before_number(self):
+        """฿100 should become 'หนึ่งร้อยบาท' not 'บาทหนึ่งร้อย'."""
+        result = _normalize_thai_text("฿100")
+        self.assertIn("บาท", result)
+        # "บาท" should come AFTER the number word
+        baht_pos = result.index("บาท")
+        self.assertGreater(baht_pos, 0)
+
+    def test_dollar_before_number(self):
+        result = _normalize_thai_text("$50")
+        self.assertIn("ดอลลาร์", result)
+        self.assertNotIn("$", result)
+
+    def test_baht_after_number_unchanged(self):
+        """100 บาท should still work (number then unit)."""
+        result = _normalize_thai_text("100 บาท")
+        self.assertIn("บาท", result)
+        self.assertNotIn("100", result)
+
+
+@unittest.skipUnless(_HAS_PYTHAINLP, "pythainlp not installed")
+class TestNormalizeThaiTextLongDigits(unittest.TestCase):
+    """Stage 10: Long digit sequence handling."""
+
+    def test_id_card_13_digits(self):
+        """13-digit ID card should be read digit-by-digit."""
+        result = _normalize_thai_text("1234567890123")
+        self.assertIn("หนึ่ง", result)
+        # Should NOT contain words like "ล้าน" (million)
+        self.assertNotIn("ล้าน", result)
+
+    def test_short_number_as_word(self):
+        """6-digit number should still be read as a word."""
+        result = _normalize_thai_text("100000")
+        self.assertIn("แสน", result)  # "หนึ่งแสน"
+
+
+@unittest.skipUnless(_HAS_PYTHAINLP, "pythainlp not installed")
 class TestNormalizeThaiTextIntegration(unittest.TestCase):
     """Integration tests with mixed content."""
 
@@ -241,6 +282,25 @@ class TestNormalizeThaiTextIntegration(unittest.TestCase):
         text = "สวัสดีครับ วันนี้อากาศดี"
         result = _normalize_thai_text(text)
         self.assertIn("สวัสดี", result)
+
+
+
+@unittest.skipUnless(_HAS_PYTHAINLP, "pythainlp not installed")
+class TestNormalizeThaiTextCommaNumbers(unittest.TestCase):
+    """Comma-separated numbers support."""
+
+    def test_comma_number_to_word(self):
+        """1,500 should be read as 'หนึ่งพันห้าร้อย'."""
+        result = _normalize_thai_text("1,500")
+        self.assertIn("พัน", result)
+        self.assertNotIn(",", result)
+
+    def test_currency_with_comma(self):
+        """฿1,500 should become 'หนึ่งพันห้าร้อยบาท'."""
+        result = _normalize_thai_text("฿1,500")
+        self.assertIn("บาท", result)
+        self.assertIn("พัน", result)
+        self.assertNotIn("฿", result)
 
 
 if __name__ == "__main__":

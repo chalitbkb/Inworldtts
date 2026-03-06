@@ -137,9 +137,11 @@ def _normalize_thai_text(text: str) -> str:
         4. Date normalization — convert "1/1/2568" to "วันที่หนึ่งเดือนมกราคม..."
         5. Phone number handling — read digits one-by-one ("0812345678")
         6. Abbreviation expansion — convert "กทม." to "กรุงเทพมหานคร"
-        7. Unit/symbol expansion — convert "°C" to "องศาเซลเซียส"
-        8. Mai Yamok (ๆ) — duplicate preceding word ("เด็กๆ" → "เด็กเด็ก")
-        9. Number-to-word — convert "100" to "หนึ่งร้อย"
+        7. Currency position — move symbol after number ("฿100" → "100 บาท")
+        8. Unit/symbol expansion — convert "°C" to "องศาเซลเซียส"
+        9. Mai Yamok (ๆ) — duplicate preceding word ("เด็กๆ" → "เด็กเด็ก")
+        10. Long digit sequences — read 7+ digits one-by-one (ID cards, etc.)
+        11. Number-to-word — convert remaining numbers to Thai words
 
     All pythainlp imports are lazy so the pipeline won't break
     on systems where pythainlp is not installed.
@@ -224,11 +226,19 @@ def _normalize_thai_text(text: str) -> str:
     for abbr_pattern, full_word in _THAI_ABBREVIATIONS.items():
         text = re.sub(abbr_pattern, full_word, text)
 
-    # --- Stage 7: Unit/symbol expansion ---
+    # --- Stage 7: Currency position normalization ---
+    # Move currency symbols from before to after the number for Thai word order.
+    # Supports commas in numbers, e.g., "฿1,500" → "1,500 บาท"
+    text = re.sub(r"฿\s?([\d,]+(?:\.\d+)?)", r"\1 บาท", text)
+    text = re.sub(r"\$\s?([\d,]+(?:\.\d+)?)", r"\1 ดอลลาร์", text)
+    text = re.sub(r"€\s?([\d,]+(?:\.\d+)?)", r"\1 ยูโร", text)
+    text = re.sub(r"¥\s?([\d,]+(?:\.\d+)?)", r"\1 เยน", text)
+
+    # --- Stage 8: Unit/symbol expansion ---
     for unit_pattern, thai_word in _THAI_UNITS:
         text = re.sub(unit_pattern, thai_word, text)
 
-    # --- Stage 8: Mai Yamok (ๆ) handling ---
+    # --- Stage 9: Mai Yamok (ๆ) handling ---
     # "เด็กๆ" → "เด็กเด็ก", "คนๆ" → "คนคน"
     if "ๆ" in text:
         try:
@@ -251,18 +261,27 @@ def _normalize_thai_text(text: str) -> str:
         except ImportError:
             pass
 
-    # --- Stage 9: Number-to-word conversion ---
-    # Convert remaining standalone numbers to Thai words.
+    # --- Stage 10: Long digit sequence handling ---
+    # Sequences of 7+ digits (ID cards, bank accounts, etc.) should be
+    # read digit-by-digit, not as mathematical numbers.
+    def _read_digits_one_by_one(match: re.Match) -> str:
+        return "".join(_THAI_DIGIT_NAMES.get(d, d) for d in match.group())
+
+    text = re.sub(r"\d{7,}", _read_digits_one_by_one, text)
+
+    # --- Stage 11: Number-to-word conversion ---
+    # Convert remaining standalone numbers (less than 7 digits) to Thai words.
+    # Supports commas in numbers, e.g., "1,500" → "หนึ่งพันห้าร้อย"
     def _replace_number(match: re.Match) -> str:
-        number_str = match.group()
+        number_str = match.group().replace(",", "")
         try:
             if "." in number_str:
                 return num_to_thaiword(float(number_str))
             return num_to_thaiword(int(number_str))
         except (ValueError, TypeError):
-            return number_str
+            return match.group()
 
-    text = re.sub(r"-?\d+\.?\d*", _replace_number, text)
+    text = re.sub(r"-?[\d,]+\.?\d*", _replace_number, text)
 
     return text
 

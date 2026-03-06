@@ -170,9 +170,11 @@ To add a new language, follow these steps:
    | 4 | Date normalization | `1/1/2568` → `วันที่หนึ่งเดือนมกราคม...` |
    | 5 | Phone numbers | `0812345678` → `ศูนย์แปดหนึ่งสอง...` |
    | 6 | Abbreviation expansion | `กทม.` → `กรุงเทพมหานคร` |
-   | 7 | Unit/symbol expansion | `35°C` → `สามสิบห้าองศาเซลเซียส` |
-   | 8 | Mai Yamok (ๆ) | `เด็กๆ` → `เด็กเด็ก` |
-   | 9 | Number-to-word | `100` → `หนึ่งร้อย` |
+   | 7 | Currency position | `฿100` → `100 บาท` (Thai word order) |
+   | 8 | Unit/symbol expansion | `35°C` → `สามสิบห้าองศาเซลเซียส` |
+   | 9 | Mai Yamok (ๆ) | `เด็กๆ` → `เด็กเด็ก` |
+   | 10 | Long digit sequences | `1234567890123` → read digit-by-digit |
+   | 11 | Number-to-word | `100` → `หนึ่งร้อย` |
 
 The system will automatically recognize the language from your JSONL `language` field and process it accordingly throughout the pipeline.
 
