@@ -9,13 +9,41 @@ from nemo_text_processing.text_normalization import normalize
 
 base_logging.getLogger("NeMo-text-processing").setLevel(base_logging.CRITICAL)
 
-# Language codes for text normalization.
-_ENGLISH = "en"
-_JAPANESE = "ja"
-_CHINESE = "zh"
-_SPANISH = "es"
-_FRENCH = "fr"
-_GERMAN = "de"
+# Mapping from ISO 639-1 language codes to lingua Language enum.
+# Add new languages here to automatically support them across the pipeline.
+_LINGUA_LANG_MAP: dict[str, lingua.Language] = {
+    "en": lingua.Language.ENGLISH,
+    "ja": lingua.Language.JAPANESE,
+    "zh": lingua.Language.CHINESE,
+    "es": lingua.Language.SPANISH,
+    "fr": lingua.Language.FRENCH,
+    "de": lingua.Language.GERMAN,
+    "ko": lingua.Language.KOREAN,
+    "th": lingua.Language.THAI,
+    "pt": lingua.Language.PORTUGUESE,
+    "ru": lingua.Language.RUSSIAN,
+    "it": lingua.Language.ITALIAN,
+    "nl": lingua.Language.DUTCH,
+    "pl": lingua.Language.POLISH,
+    "ar": lingua.Language.ARABIC,
+    "hi": lingua.Language.HINDI,
+    "vi": lingua.Language.VIETNAMESE,
+    "id": lingua.Language.INDONESIAN,
+    "tr": lingua.Language.TURKISH,
+    "sv": lingua.Language.SWEDISH,
+}
+
+# Reverse mapping: lingua Language -> language code.
+_LINGUA_LANG_REVERSE_MAP: dict[lingua.Language, str] = {
+    v: k for k, v in _LINGUA_LANG_MAP.items()
+}
+
+# Languages that NeMo text normalizer supports natively.
+# Other languages will pass through without normalization.
+_NEMO_SUPPORTED_LANGS = {"en", "ja", "zh", "es", "fr", "de"}
+
+# Languages where ASCII conversion should be applied before normalization.
+_ASCII_CONVERT_LANGS = {"en"}
 
 
 class TextNormalizer(metaclass=abc.ABCMeta):
@@ -52,33 +80,24 @@ class NoOpTextNormalizer(TextNormalizer):
 
 class NemoTextNormalizer(TextNormalizer):
     """Text normalizer for different languages using Nvidias NeMo text normalization
-    library."""
+    library. Supports extensible language registration via _LINGUA_LANG_MAP."""
 
     def __init__(self):
         super().__init__()
-        self._supported_languages = [
-            _ENGLISH,
-            _JAPANESE,
-            _CHINESE,
-            _SPANISH,
-            _FRENCH,
-            _GERMAN,
-        ]
+        # All languages registered in _LINGUA_LANG_MAP are considered "supported".
+        self._supported_languages = list(_LINGUA_LANG_MAP.keys())
+
+        # Only create NeMo normalizers for languages that NeMo actually supports.
+        # Other languages will pass through without text normalization.
         self._normalize_text = {
             lang: normalize.Normalizer(input_case="cased", lang=lang)
-            for lang in self._supported_languages
+            for lang in _NEMO_SUPPORTED_LANGS
         }
         self.lang_detector = None
 
     def init_lang_detector(self):
         self.lang_detector = lingua.LanguageDetectorBuilder.from_languages(
-            lingua.Language.KOREAN,
-            lingua.Language.JAPANESE,
-            lingua.Language.CHINESE,
-            lingua.Language.ENGLISH,
-            lingua.Language.SPANISH,
-            lingua.Language.FRENCH,
-            lingua.Language.GERMAN,
+            *_LINGUA_LANG_MAP.values()
         ).build()
 
     def convert_to_ascii(self, text: str) -> str:
@@ -94,36 +113,36 @@ class NemoTextNormalizer(TextNormalizer):
             # (dynamic language detection).
             if self.lang_detector is None:
                 self.init_lang_detector()
-            language = self.lang_detector.detect_language_of(text)
-            if language == lingua.Language.ENGLISH:
-                return self.normalize_with_language(text, _ENGLISH)
-            elif language == lingua.Language.JAPANESE:
-                return self.normalize_with_language(text, _JAPANESE)
-            elif language == lingua.Language.CHINESE:
-                return self.normalize_with_language(text, _CHINESE)
-            elif language == lingua.Language.SPANISH:
-                return self.normalize_with_language(text, _SPANISH)
-            elif language == lingua.Language.FRENCH:
-                return self.normalize_with_language(text, _FRENCH)
-            elif language == lingua.Language.GERMAN:
-                return self.normalize_with_language(text, _GERMAN)
+            detected_lang = self.lang_detector.detect_language_of(text)
+
+            # Look up the ISO language code from the detected lingua Language.
+            lang_code = _LINGUA_LANG_REVERSE_MAP.get(detected_lang)
+            if lang_code:
+                return self.normalize_with_language(text, lang_code)
             else:
+                # Language detected but not in our supported map — return as-is.
                 return text
         except Exception:
             return text
 
     def normalize_with_language(self, text: str, language: str) -> str:
-        if language not in self._supported_languages:
+        # If the language isn't in our supported set, pass through.
+        if language not in _LINGUA_LANG_MAP:
             return text
 
-        if language == _ENGLISH:
+        # Apply ASCII conversion for languages that need it (e.g., English).
+        if language in _ASCII_CONVERT_LANGS:
             text = self.convert_to_ascii(text)
 
-        try:
-            text = self._normalize_text[language].normalize(text)
-        except Exception:
-            # return the unnormalized text if error
-            return text
+        # Use NeMo normalizer if available for this language,
+        # otherwise return text as-is (pass-through for unsupported NeMo languages).
+        if language in self._normalize_text:
+            try:
+                text = self._normalize_text[language].normalize(text)
+            except Exception:
+                # return the unnormalized text if error
+                return text
+
         return text
 
 

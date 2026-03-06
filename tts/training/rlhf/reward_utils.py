@@ -16,7 +16,7 @@ _DEFAULT_DNSMOS = 0
 _DEFAULT_SIMILARITY = 0
 
 # Language list for CER (Character Error Rate) instead of WER (Word Error Rate).
-_CER_LANG_LIST = ["zh", "ja", "ko"]
+_CER_LANG_LIST = ["zh", "ja", "ko", "th"]
 
 
 def _transcribe_audio(
