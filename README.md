@@ -519,6 +519,59 @@ A: For fine-tuning, we recommend a minimum of **10+ hours** of audio data. More 
 **Q: Can I clone any voice without training on that specific person?**
 A: Yes! That's the "Zero-shot" feature. After training on a general dataset, you can clone *any* voice by providing just a 3-10 second audio sample at inference time — even voices the model has never heard before.
 
+## 🗣️ Training with Regional Thai Dialects (สำเนียงท้องถิ่น)
+
+This system supports training with regional Thai dialects such as Southern (ใต้), Northern (เหนือ/คำเมือง), and Isan (อีสาน). The model doesn't have a built-in "dialect selector" — instead, it learns accent and speaking style from the audio data itself.
+
+### Two Approaches
+
+#### Approach 1: Zero-shot Voice Cloning (Easiest)
+
+No retraining needed. Simply use a **prompt audio** from a native dialect speaker at inference time:
+
+```bash
+python tools/serving/inference.py \
+    --model_checkpoint_path /path/to/serving/model \
+    --audio_encoder_path /path/to/encoder.pt \
+    --audio_decoder_path /path/to/decoder.pt \
+    --prompt_wav_path /path/to/southern_speaker.wav \
+    --prompt_transcription "สวัสดีครับ ผมชื่อสมชาย" \
+    --text "วันนี้อากาศดีมาก" \
+    --output_path ./audios/southern_output.wav
+```
+
+> ⚠️ **Limitation:** If the base model was trained mostly on Central Thai, the output may sound "blended" even with a dialect prompt. For stronger dialect fidelity, use Approach 2.
+
+#### Approach 2: Fine-tune with Dialect Data (Best Quality)
+
+Train or fine-tune the model with audio data from dialect speakers. This produces the most authentic results.
+
+**Example JSONL with dialect speakers:**
+
+```jsonl
+{"audio_filepath": "south_001.wav", "text": "ไปลงเรือไหมน้อง", "language": "th", "speaker": "speaker_south_01"}
+{"audio_filepath": "south_002.wav", "text": "แกงส้มปลากะพง", "language": "th", "speaker": "speaker_south_01"}
+{"audio_filepath": "north_001.wav", "text": "มาเจ่อกั๋นเจ้า", "language": "th", "speaker": "speaker_north_01"}
+{"audio_filepath": "isan_001.wav", "text": "กินเข้าแล้วบ่", "language": "th", "speaker": "speaker_isan_01"}
+```
+
+### Data Preparation Tips for Dialects
+
+| Guideline | Details |
+|-----------|---------|
+| **Transcript accuracy** | Write exactly what is spoken, including dialect words. If the speaker says "หม้ายย" (Southern for "ไหม"), write "หม้ายย" — not the Central Thai equivalent |
+| **Minimum data** | At least **5–10 hours of audio per dialect** for good results |
+| **Speaker diversity** | Include multiple speakers per dialect for better generalization |
+| **Consistent `language` tag** | Keep `"language": "th"` for all Thai dialects. The model distinguishes speakers, not formal dialects |
+| **Speaker naming** | Use descriptive speaker IDs (e.g., `speaker_south_01`) to keep your data organized |
+| **Mixed datasets** | You can mix Central and regional speakers in the same training dataset |
+
+### ⚠️ Important Notes
+
+1. **Text Normalizer:** The 11-stage Thai text normalizer is designed for **Central Thai**. Dialect-specific words (e.g., "เจ่อ" = เจอ, "บ่" = ไม่) may not be recognized by some stages. These words will pass through unchanged, which is usually fine for TTS
+2. **Tokenizer:** LLaMA's BPE tokenizer handles Thai characters at the byte level, so dialect-specific vocabulary is supported without any changes
+3. **Quality tip:** For best results, record dialect speakers reading both dialect-specific phrases AND standard Thai phrases. This gives the model a broader understanding of the speaker's voice
+
 ## Development
 
 ### Available Commands
