@@ -109,10 +109,21 @@ Process your raw audio dataset into a JSONL file where each line contains a samp
 
 **Required fields:**
 * `transcript`: Text transcription of the audio
-* `language`: Language code (e.g., "en" for English)
+* `language`: Language code (e.g., "en" for English, "th" for Thai)
 * `wav_path`: Absolute path to the audio file
 * `duration`: Audio duration in seconds
 * `sample_rate`: Audio sample rate in Hz
+
+### 1.1 Adding New Languages
+
+The text processing pipeline is designed to be easily extensible to new languages. Tokenization uses a BPE tokenizer which is language-agnostic, and there are no phoneme dictionaries required. 
+
+To add a new language, follow these two steps:
+
+1. **Text Normalization:** Add the new language mapping to `_LINGUA_LANG_MAP` inside `tts/data/text_normalization.py`. The key should be the ISO-639-1 code (e.g., `'th'`), and the value should be the corresponding `lingua.Language` enum.
+2. **RLHF Reward (Optional):** If the new language does *not* use spaces between words (e.g., Chinese, Japanese, Thai), add its ISO code to `_CER_LANG_LIST` inside `tts/training/rlhf/reward_utils.py`. This ensures the reward function uses Character Error Rate (CER) instead of Word Error Rate (WER).
+
+The system will automatically recognize the language from your JSONL `language` field and process it accordingly throughout the pipeline.
 
 **Example dataset:** You can reference the [LibriTTS dataset](https://huggingface.co/datasets/mythicinfinity/libritts) which contains ~585 hours of English speech from 2, 456 speakers at 24kHz sampling rate.
 
@@ -300,7 +311,7 @@ Create an RLHF training config (`./example/configs/rlhf.json`). Key sections inc
     },
     "dataset": {
         "enable_rlhf_training": true,
-        "allowed_languages": ["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ko", "ja", "nl", "pl"]
+        "allowed_languages": ["en", "es", "fr", "de", "it", "pt", "ru", "zh", "ko", "ja", "nl", "pl", "th"]
     }
 }
 ```

@@ -111,6 +111,13 @@ When reporting issues, please include:
 4. **Testing**: Test on multiple environments (CUDA versions, platforms)
 5. **Pull request**: Use our PR template and provide thorough description
 
+### Adding Languages
+
+To contribute support for a new language, follow these steps:
+1. **Update `text_normalization.py`**: Add the ISO 639-1 code and its `lingua.Language` mapping to the `_LINGUA_LANG_MAP` dictionary.
+2. **Update `reward_utils.py` (Optional)**: If the language does not use spaces (like Chinese, Japanese, Thai), add its ISO code to `_CER_LANG_LIST` so the RLHF reward function uses Character Error Rate (CER) instead of Word Error Rate (WER).
+3. **Verify Tokenization**: Non-whitespace languages may require you to double-check Llama's existing tokenizer behavior, though standard BPE usually handles it.
+
 ## Pull Request Process
 
 ### Before Submitting
