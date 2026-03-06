@@ -387,7 +387,6 @@ python tools/serving/inference.py \
     --seed=42
 ```
 
-
 **Required components:**
 - Trained model in serving format (converted using `convert_checkpoint.py`)
 - Audio encoder checkpoint (codec `.pt`/`.ckpt` file)
