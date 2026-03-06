@@ -198,10 +198,22 @@ with open(sft_config_path, "r") as f:
 # Update dataset paths
 config["train_weighted_datasets"] = { vectorized_dir: 1.0 }
 config["val_weighted_datasets"] = { vectorized_dir: 1.0 }
-# Force BS and logging for Kaggle
-config["training"]["batch_size"] = 2
+# Force BS, accumulation and logging for Kaggle
+config["training"]["batch_size"] = 1
+config["training"]["gradient_accumulation_steps"] = 8
 config["training"]["logging_steps"] = 10
 config["training"]["eval_steps"] = 50
+config["training"]["gradient_checkpointing"] = True
+
+# Add LoRA to save VRAM for 3B parameter model on 16GB GPUs
+config["lora"] = {
+    "task_type": "CAUSAL_LM",
+    "r": 16,
+    "lora_alpha": 32,
+    "target_modules": ["q_proj", "v_proj"],
+    "lora_dropout": 0.05,
+    "bias": "none"
+}
 # Force disable NeMo text normalization to prevent unsupported language errors (like 'ja' or 'th')
 if "modeling" in config and "parameters" in config["modeling"]:
     config["modeling"]["parameters"]["enable_text_normalization"] = False
