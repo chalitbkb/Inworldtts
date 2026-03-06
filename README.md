@@ -156,10 +156,23 @@ Process your raw audio dataset into a JSONL file where each line contains a samp
 
 The text processing pipeline is designed to be easily extensible to new languages. Tokenization uses a BPE tokenizer which is language-agnostic, and there are no phoneme dictionaries required. 
 
-To add a new language, follow these two steps:
+To add a new language, follow these steps:
 
 1. **Text Normalization:** Add the new language mapping to `_LINGUA_LANG_MAP` inside `tts/data/text_normalization.py`. The key should be the ISO-639-1 code (e.g., `'th'`), and the value should be the corresponding `lingua.Language` enum.
 2. **RLHF Reward (Optional):** If the new language does *not* use spaces between words (e.g., Chinese, Japanese, Thai), add its ISO code to `_CER_LANG_LIST` inside `tts/training/rlhf/reward_utils.py`. This ensures the reward function uses Character Error Rate (CER) instead of Word Error Rate (WER).
+3. **Custom Text Normalizer (Optional):** If the language needs special normalization (e.g., converting numbers to words), you can add a custom normalizer function. Thai has a comprehensive 9-stage pipeline in `_normalize_thai_text()` inside `text_normalization.py` that you can use as a reference:
+
+   | Stage | What it does | Example |
+   |-------|-------------|---------|
+   | 1 | Thai numerals → Arabic | `๑๒๓` → `123` |
+   | 2 | Character cleaning | Fix floating vowels, duplicate tone marks |
+   | 3 | Time normalization | `14:30 น.` → `สิบสี่นาฬิกาสามสิบนาที` |
+   | 4 | Date normalization | `1/1/2568` → `วันที่หนึ่งเดือนมกราคม...` |
+   | 5 | Phone numbers | `0812345678` → `ศูนย์แปดหนึ่งสอง...` |
+   | 6 | Abbreviation expansion | `กทม.` → `กรุงเทพมหานคร` |
+   | 7 | Unit/symbol expansion | `35°C` → `สามสิบห้าองศาเซลเซียส` |
+   | 8 | Mai Yamok (ๆ) | `เด็กๆ` → `เด็กเด็ก` |
+   | 9 | Number-to-word | `100` → `หนึ่งร้อย` |
 
 The system will automatically recognize the language from your JSONL `language` field and process it accordingly throughout the pipeline.
 
