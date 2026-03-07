@@ -204,6 +204,7 @@ config["training"]["gradient_accumulation_steps"] = 8
 config["training"]["logging_steps"] = 10
 config["training"]["eval_steps"] = 50
 config["training"]["gradient_checkpointing"] = True
+config["checkpointing"]["keep_only_last_n_checkpoints"] = 5
 
 # Add LoRA to save VRAM for 3B parameter model on 16GB GPUs
 config["lora"] = {

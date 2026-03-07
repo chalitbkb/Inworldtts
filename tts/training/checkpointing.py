@@ -23,7 +23,8 @@ def load_from_checkpoint(
     if load_full_checkpoint:
         checkpoint.update({"optimizer": optimizer, "loss_statistics": {}})
 
-    fabric.load(checkpoint_file_to_resume_from, checkpoint, strict=True)
+    # strict=False allows loading checkpoints that only contain trainable parameters (e.g., LoRA)
+    fabric.load(checkpoint_file_to_resume_from, checkpoint, strict=False)
     statistics = None
     if load_full_checkpoint:
         statistics = custom_logging.Statistics.from_dict(checkpoint["loss_statistics"])
@@ -49,7 +50,11 @@ def save_to_checkpoint(
         "optimizer": optimizer,
         "config": config.to_dict(),
     }
-    fabric.save(path=checkpoint_file, state=checkpoint)
+    
+    # Optional: Save only trainable parameters if using LoRA
+    filter_dict = {"model": lambda k, v: v.requires_grad} if config.lora is not None else None
+    
+    fabric.save(path=checkpoint_file, state=checkpoint, filter=filter_dict)
 
     if fabric.is_global_zero:
         keep_only_last_n_checkpoints = config.checkpointing.keep_only_last_n_checkpoints
