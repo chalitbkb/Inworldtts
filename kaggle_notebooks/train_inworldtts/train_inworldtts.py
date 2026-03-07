@@ -60,24 +60,28 @@ if vram_gb >= 40:
     hw_grad_checkpoint = False
     hw_lora_r = 64
     hw_target_modules = "all-linear"
+    hw_vectorize_bs = 32
 elif vram_gb >= 22:
     hw_batch_size = 8
     hw_grad_accum = 2
     hw_grad_checkpoint = True
     hw_lora_r = 32
     hw_target_modules = "all-linear"
+    hw_vectorize_bs = 16
 elif vram_gb >= 14:
     hw_batch_size = 1
     hw_grad_accum = max(1, int(16 / num_gpus))
     hw_grad_checkpoint = True
     hw_lora_r = 16
     hw_target_modules = "all-linear"
+    hw_vectorize_bs = 16
 else:
     hw_batch_size = 1
     hw_grad_accum = max(1, int(16 / num_gpus))
     hw_grad_checkpoint = True
     hw_lora_r = 8
-    hw_target_modules = ["q_proj", "v_proj"]
+    hw_target_modules = "all-linear"
+    hw_vectorize_bs = 4
     print("   ⚠️ WARNING: Low VRAM detected. Running in survival mode (aggressive accumulation, minimal LoRA).")
 
 hw_num_workers = min(cpu_cores, num_gpus * 4, 8)
@@ -89,6 +93,7 @@ print(f"   - CPU Workers: {hw_num_workers}")
 hw_targets_display = hw_target_modules if isinstance(hw_target_modules, str) else len(hw_target_modules)
 print(f"   - LoRA Rank: {hw_lora_r} | Targets: {hw_targets_display} modules")
 print(f"   - Grad Checkpoint: {hw_grad_checkpoint}")
+print(f"   - Vectorize Batch Size: {hw_vectorize_bs} (Step 4)")
 print("=" * 60 + "\n")
 
 # ==============================================================================
@@ -238,7 +243,7 @@ else:
         "--dataset_path", train_jsonl_path,
         "--codec_model_path", codec_path, # Provide the exact downloaded path
         "--output_dir", vectorized_dir,
-        "--batch_size", "4"
+        "--batch_size", str(hw_vectorize_bs)
     ]
     print("Running:", " ".join(cmd_vectorize))
     subprocess.run(cmd_vectorize, check=True)
