@@ -59,19 +59,19 @@ if vram_gb >= 40:
     hw_grad_accum = 1
     hw_grad_checkpoint = False
     hw_lora_r = 64
-    hw_target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+    hw_target_modules = "all-linear"
 elif vram_gb >= 22:
     hw_batch_size = 8
     hw_grad_accum = 2
     hw_grad_checkpoint = True
     hw_lora_r = 32
-    hw_target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
+    hw_target_modules = "all-linear"
 elif vram_gb >= 14:
     hw_batch_size = 1
     hw_grad_accum = max(1, int(16 / num_gpus))
     hw_grad_checkpoint = True
     hw_lora_r = 16
-    hw_target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
+    hw_target_modules = "all-linear"
 else:
     hw_batch_size = 1
     hw_grad_accum = max(1, int(16 / num_gpus))
@@ -86,7 +86,8 @@ print("\n⚙️  Auto-Configured Training Parameters (will be applied in Step 5)
 print(f"   - Batch Size: {hw_batch_size} (per GPU)")
 print(f"   - Grad Accum: {hw_grad_accum} steps")
 print(f"   - CPU Workers: {hw_num_workers}")
-print(f"   - LoRA Rank: {hw_lora_r} | Targets: {len(hw_target_modules)} modules")
+hw_targets_display = hw_target_modules if isinstance(hw_target_modules, str) else len(hw_target_modules)
+print(f"   - LoRA Rank: {hw_lora_r} | Targets: {hw_targets_display} modules")
 print(f"   - Grad Checkpoint: {hw_grad_checkpoint}")
 print("=" * 60 + "\n")
 
