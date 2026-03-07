@@ -234,7 +234,7 @@ if os.path.exists(os.path.join(vectorized_dir, "train_codes.npy")):
 else:
     # Per README, data_vectorizer uses torchrun
     cmd_vectorize = [
-        "torchrun", "--nproc_per_node", "1", "tools/data/data_vectorizer.py", 
+        "torchrun", "--nproc_per_node", str(num_gpus), "tools/data/data_vectorizer.py", 
         "--dataset_path", train_jsonl_path,
         "--codec_model_path", codec_path, # Provide the exact downloaded path
         "--output_dir", vectorized_dir,
