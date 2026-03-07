@@ -20,6 +20,77 @@ import subprocess
 import sys
 
 # ==============================================================================
+# Step 0: Hardware Auto-Detection & Training Strategy
+# ==============================================================================
+import torch
+import multiprocessing
+import psutil
+
+print("=" * 60)
+print("Step 0: Hardware Auto-Detection & Training Strategy")
+print("=" * 60)
+
+num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
+cpu_cores = multiprocessing.cpu_count()
+ram_gb = psutil.virtual_memory().total / (1024**3)
+
+if torch.cuda.is_available():
+    gpu_props = torch.cuda.get_device_properties(0)
+    vram_gb = gpu_props.total_memory / (1024**3)
+    gpu_name = gpu_props.name.lower()
+else:
+    vram_gb = 0
+    gpu_name = "cpu"
+
+print(f"🖥️  System Resources:")
+print(f"   - GPUs: {num_gpus}x {gpu_name.upper()} ({vram_gb:.1f} GB VRAM each)")
+print(f"   - CPUs: {cpu_cores} cores")
+print(f"   - RAM : {ram_gb:.1f} GB System Memory\n")
+
+if "t4" in gpu_name or "v100" in gpu_name or "p100" in gpu_name:
+    hw_precision = "16-mixed"
+    print("   ✓ Selected 16-mixed precision (Optimal for older arch)")
+else:
+    hw_precision = "bf16-mixed"
+    print("   ✓ Selected bf16-mixed precision (Optimal for modern arch)")
+
+if vram_gb >= 40:
+    hw_batch_size = 16
+    hw_grad_accum = 1
+    hw_grad_checkpoint = False
+    hw_lora_r = 64
+    hw_target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+elif vram_gb >= 22:
+    hw_batch_size = 8
+    hw_grad_accum = 2
+    hw_grad_checkpoint = True
+    hw_lora_r = 32
+    hw_target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
+elif vram_gb >= 14:
+    hw_batch_size = 1
+    hw_grad_accum = max(1, int(16 / num_gpus))
+    hw_grad_checkpoint = True
+    hw_lora_r = 16
+    hw_target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
+else:
+    hw_batch_size = 1
+    hw_grad_accum = max(1, int(16 / num_gpus))
+    hw_grad_checkpoint = True
+    hw_lora_r = 8
+    hw_target_modules = ["q_proj", "v_proj"]
+    print("   ⚠️ WARNING: Low VRAM detected. Running in survival mode (aggressive accumulation, minimal LoRA).")
+
+hw_num_workers = min(cpu_cores, num_gpus * 4, 8)
+
+print("\n⚙️  Auto-Configured Training Parameters (will be applied in Step 5):")
+print(f"   - Batch Size: {hw_batch_size} (per GPU)")
+print(f"   - Grad Accum: {hw_grad_accum} steps")
+print(f"   - CPU Workers: {hw_num_workers}")
+print(f"   - LoRA Rank: {hw_lora_r} | Targets: {len(hw_target_modules)} modules")
+print(f"   - Grad Checkpoint: {hw_grad_checkpoint}")
+print("=" * 60 + "\n")
+
+# ==============================================================================
 # Step 1: Hugging Face Authentication
 # ==============================================================================
 print("=" * 60)
@@ -195,10 +266,6 @@ print(f"Dynamically updating {sft_config_path} to use our vectorized dataset..."
 with open(sft_config_path, "r") as f:
     config = json.load(f)
 
-import torch
-import multiprocessing
-import psutil
-
 config["train_weighted_datasets"] = { vectorized_dir: 1.0 }
 config["val_weighted_datasets"] = { vectorized_dir: 1.0 }
 config["training"]["logging_steps"] = 10
@@ -206,88 +273,19 @@ config["training"]["eval_steps"] = 50
 config["checkpointing"]["keep_only_last_n_checkpoints"] = 5
 config["training"]["strategy"] = "ddp"
 
-# ==============================================================================
-# 🧠 INTELLIGENT HARDWARE AUTO-CONFIGURATION
-# ==============================================================================
-num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
-cpu_cores = multiprocessing.cpu_count()
-ram_gb = psutil.virtual_memory().total / (1024**3)
-
-# Safely get properties of the first GPU (assuming homogenous setup like Kaggle)
-if torch.cuda.is_available():
-    gpu_props = torch.cuda.get_device_properties(0)
-    vram_gb = gpu_props.total_memory / (1024**3)
-    gpu_name = gpu_props.name.lower()
-else:
-    vram_gb = 0
-    gpu_name = "cpu"
-
-print(f"\n🖥️ Hardware Auto-Detection:")
-print(f"   - GPUs: {num_gpus}x {gpu_name.upper()} ({vram_gb:.1f} GB VRAM each)")
-print(f"   - CPUs: {cpu_cores} cores")
-print(f"   - RAM : {ram_gb:.1f} GB System Memory")
-
-# 1. Precision & Speed Optimization (Architecture specific)
-if "t4" in gpu_name or "v100" in gpu_name or "p100" in gpu_name:
-    config["training"]["precision"] = "16-mixed" # Turing/Volta/Pascal prefer FP16
-    print("   ✓ Selected 16-mixed precision (Optimal for older arch)")
-else:
-    config["training"]["precision"] = "bf16-mixed" # Ampere/Hopper (A100, H100, 3090, 4090) prefer BF16
-    print("   ✓ Selected bf16-mixed precision (Optimal for modern arch)")
-
-# 2. VRAM & Model Capacity Management (The OOM prevention logic)
-# Llama-3B needs ~6GB just for base weights in bf16/fp16. 
-# LoRA adds memory. Activations add memory based on batch size.
-
-# Very High VRAM (A100 80GB, A6000 48GB) - Run wild!
-if vram_gb >= 40:
-    config["training"]["batch_size"] = 16
-    config["training"]["gradient_accumulation_steps"] = 1
-    config["training"]["gradient_checkpointing"] = False # Save time, we have the ram
-    lora_r = 64
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-
-# High VRAM (RTX 3090/4090 24GB, A100 40GB) - Comfortable
-elif vram_gb >= 22:
-    config["training"]["batch_size"] = 8
-    config["training"]["gradient_accumulation_steps"] = 2
-    config["training"]["gradient_checkpointing"] = True
-    lora_r = 32
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
-
-# Medium VRAM (Kaggle T4 16GB, RTX 4080 16GB) - Tight fit
-elif vram_gb >= 14:
-    config["training"]["batch_size"] = 1
-    config["training"]["gradient_accumulation_steps"] = max(1, int(16 / num_gpus)) # Aim for effective batch of ~16
-    config["training"]["gradient_checkpointing"] = True
-    lora_r = 16
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
-
-# Low VRAM (12GB or less) - Survival mode
-else:
-    config["training"]["batch_size"] = 1
-    config["training"]["gradient_accumulation_steps"] = max(1, int(16 / num_gpus))
-    config["training"]["gradient_checkpointing"] = True
-    lora_r = 8
-    target_modules = ["q_proj", "v_proj"] # Minimum required for learning
-    print("   ⚠️ WARNING: Low VRAM detected. Running in survival mode (aggressive accumulation, minimal LoRA).")
-
-# 3. CPU Data Loading Optimization
-config["training"]["num_workers"] = min(cpu_cores, num_gpus * 4, 8) # Don't overwhelm CPUs
-
-print("\n⚙️ Auto-Configured Training Parameters:")
-print(f"   - Batch Size: {config['training']['batch_size']} (per GPU)")
-print(f"   - Grad Accum: {config['training']['gradient_accumulation_steps']} steps")
-print(f"   - CPU Workers: {config['training']['num_workers']}")
-print(f"   - LoRA Rank: {lora_r} | Targets: {len(target_modules)} modules")
-print(f"   - Grad Checkpoint: {config['training']['gradient_checkpointing']}")
+# 🧠 APPLY HARDWARE AUTO-CONFIGURATION (Calculated in Step 0)
+config["training"]["precision"] = hw_precision
+config["training"]["batch_size"] = hw_batch_size
+config["training"]["gradient_accumulation_steps"] = hw_grad_accum
+config["training"]["gradient_checkpointing"] = hw_grad_checkpoint
+config["training"]["num_workers"] = hw_num_workers
 
 # Inject LoRA config
 config["lora"] = {
     "task_type": "CAUSAL_LM",
-    "r": lora_r,
-    "lora_alpha": lora_r * 2,
-    "target_modules": target_modules,
+    "r": hw_lora_r,
+    "lora_alpha": hw_lora_r * 2,
+    "target_modules": hw_target_modules,
     "lora_dropout": 0.05,
     "bias": "none"
 }
