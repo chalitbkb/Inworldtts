@@ -148,6 +148,9 @@ if not os.path.exists(REPO_DIR):
         github_repo_url = "https://github.com/chalitbkb/Inworldtts.git"
         
     subprocess.run(["git", "clone", github_repo_url, REPO_DIR], check=True)
+else:
+    print("Repository already exists. Updating to latest version...")
+    subprocess.run(["git", "pull"], cwd=REPO_DIR, check=True)
 
 # Change working directory to the repo so scripts run correctly
 os.chdir(REPO_DIR)
