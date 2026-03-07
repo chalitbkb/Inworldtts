@@ -197,6 +197,7 @@ with open(sft_config_path, "r") as f:
 
 import torch
 import multiprocessing
+import psutil
 
 config["train_weighted_datasets"] = { vectorized_dir: 1.0 }
 config["val_weighted_datasets"] = { vectorized_dir: 1.0 }
@@ -210,6 +211,7 @@ config["training"]["strategy"] = "ddp"
 # ==============================================================================
 num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
 cpu_cores = multiprocessing.cpu_count()
+ram_gb = psutil.virtual_memory().total / (1024**3)
 
 # Safely get properties of the first GPU (assuming homogenous setup like Kaggle)
 if torch.cuda.is_available():
@@ -223,6 +225,7 @@ else:
 print(f"\n🖥️ Hardware Auto-Detection:")
 print(f"   - GPUs: {num_gpus}x {gpu_name.upper()} ({vram_gb:.1f} GB VRAM each)")
 print(f"   - CPUs: {cpu_cores} cores")
+print(f"   - RAM : {ram_gb:.1f} GB System Memory")
 
 # 1. Precision & Speed Optimization (Architecture specific)
 if "t4" in gpu_name or "v100" in gpu_name or "p100" in gpu_name:
