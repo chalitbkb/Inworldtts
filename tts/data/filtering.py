@@ -10,9 +10,11 @@ def filter_empty_transcript(sample: data_sample.Sample):
     return "empty_transcript" if sample.transcript == "" else None
 
 
-def filter_non_english(sample: data_sample.Sample):
-    """Filter if language is not English."""
-    return "non_english" if sample.language != "en" else None
+def filter_unknown_language(sample: data_sample.Sample):
+    """Filter if language is empty or unknown."""
+    if not sample.language or sample.language == "unknown":
+        return "unknown_language"
+    return None
 
 
 def filter_long_duration(sample: data_sample.Sample):

@@ -1,6 +1,9 @@
 # Training-time constants.
 LOSS_IGNORE_TOKEN_ID = -100
 
+# Supported language codes.
+THAI_LANGUAGE_CODE = "th"
+
 # Tokenization.
 SPEECH_TOKEN_PATTERN = "<|s_{}|>"
 SPEECH_START_TOKEN = "<|speech_start|>"

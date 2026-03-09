@@ -24,7 +24,7 @@ from absl import app, flags, logging
 
 from tts.core import constants, modeling, prompting
 from tts.core.codec import decoding, encoding
-from tts.data import data_utils
+from tts.data import data_utils, text_normalization
 from tts.inference import inferencing
 
 FLAGS = flags.FLAGS
@@ -59,6 +59,12 @@ _USE_VLLM = flags.DEFINE_bool(
 _SEED = flags.DEFINE_integer(
     "seed", 42,
     "Random seed for inference")
+_ENABLE_TEXT_NORMALIZATION = flags.DEFINE_bool(
+    "enable_text_normalization", True,
+    "Whether to apply text normalization to the input text")
+_LANGUAGE = flags.DEFINE_string(
+    "language", "th",
+    "Language code for text normalization (e.g., 'en', 'th')")
 
 
 def main(argv: list[str]) -> None:
@@ -74,6 +80,8 @@ def main(argv: list[str]) -> None:
     output_path = _OUTPUT_PATH.value
     use_vllm = _USE_VLLM.value
     seed = _SEED.value
+    enable_text_normalization = _ENABLE_TEXT_NORMALIZATION.value
+    language = _LANGUAGE.value
     # Initialize device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(f"Using device: {device}")
@@ -149,6 +157,12 @@ def main(argv: list[str]) -> None:
     )
 
     audio_prompt_transcription = prompt_transcription
+
+    # Text Normalization
+    text_normalizer = text_normalization.create_text_normalizer(enable_text_normalization)
+    if enable_text_normalization:
+        logging.info(f"Normalizing text for language: {language}")
+        text_to_synthesize = text_normalizer.normalize_with_language(text_to_synthesize, language)
 
     # Generate speech
     logging.info(f"Generating speech for text: '{text_to_synthesize}'")

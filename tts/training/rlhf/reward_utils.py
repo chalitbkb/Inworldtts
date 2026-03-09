@@ -16,7 +16,8 @@ _DEFAULT_DNSMOS = 0
 _DEFAULT_SIMILARITY = 0
 
 # Language list for CER (Character Error Rate) instead of WER (Word Error Rate).
-_CER_LANG_LIST = ["zh", "ja", "ko"]
+# Thai is included because it does not use spaces between words consistently.
+_CER_LANG_LIST = ["zh", "ja", "ko", "th"]
 
 
 def _transcribe_audio(
@@ -36,10 +37,14 @@ def _transcribe_audio(
         return ""
 
 
+# Thai punctuation marks used in transcript normalization.
+_THAI_PUNCTUATION = "ๆฯ"
+
+
 def _normalize_transcript(transcript: str, language: str) -> str:
     """Normalizes a transcript by removing punctuation, extra spaces, and
     converting to lowercase."""
-    punctuation_all = hanzi.punctuation + string.punctuation
+    punctuation_all = hanzi.punctuation + string.punctuation + _THAI_PUNCTUATION
 
     normalized = transcript.lower().strip()
     normalized = normalized.translate(str.maketrans("", "", punctuation_all))
