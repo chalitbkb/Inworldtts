@@ -148,11 +148,11 @@ def main(argv: list[str]) -> None:
     inference_settings = inferencing.InferenceSettings(
         temperature=0.8,
         max_tokens=1792,
-        min_tokens=10,
+        min_tokens=100,
         top_p=1.0,
         top_k=50,
-        repetition_penalty=1.0,  # CRITICAL: Must be 1.0. 1.4 destroys audio generation
-        frequency_penalty=0.0,   # CRITICAL: Must be 0.0.
+        repetition_penalty=1.0,
+        frequency_penalty=0.0,
         seed=42,
     )
 
@@ -163,8 +163,6 @@ def main(argv: list[str]) -> None:
     if enable_text_normalization:
         logging.info(f"Normalizing text for language: {language}")
         text_to_synthesize = text_normalizer.normalize_with_language(text_to_synthesize, language)
-        if audio_prompt_transcription:
-            audio_prompt_transcription = text_normalizer.normalize_with_language(audio_prompt_transcription, language)
 
     # Generate speech
     logging.info(f"Generating speech for text: '{text_to_synthesize}'")
