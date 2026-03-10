@@ -49,7 +49,9 @@ class DatasetConfig:
     # Whether to enable RLHF (Reinforcement Learning from Human Feedback) training.
     enable_rlhf_training: bool
     # Minimum audio duration for dataset filtering.
-    min_audio_duration: float = 0.0
+    min_audio_duration: float = 0.5
+    # Maximum audio duration for dataset filtering.
+    max_audio_duration: float = 15.0
     # List of allowed instruction finetuning annotations.
     # If empty or None, no instruction finetuning will be done.
     allowed_ift_annotations: list[str] | None = None

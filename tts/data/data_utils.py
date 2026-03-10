@@ -126,8 +126,8 @@ def load_and_filter_audio_codes_and_samples(
         filtering.filter_min_sample_rate(dataset_config.min_sample_rate),
         filtering.filter_min_dnsmos_score(dataset_config.min_dnsmos_score),
         filtering.filter_min_audio_duration(dataset_config.min_audio_duration),
+        filtering.filter_max_audio_duration(dataset_config.max_audio_duration),
         filtering.filter_empty_transcript,
-        filtering.filter_long_duration,
         filtering.filter_punct_or_space_only_transcript,
     ]
 
