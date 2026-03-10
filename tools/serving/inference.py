@@ -163,7 +163,7 @@ def main(argv: list[str]) -> None:
         audio_prompt_transcription = prompt_transcription
     else:
         logging.info("No audio prompt provided. Synthesizing without prompt.")
-        prompt_wav = torch.zeros(1, 1).to(device) # Dummy tensor for API compatibility
+        prompt_wav = None # Explicitly None for no prompt
         speech_ids = [] # Empty list for no speech prompt
         audio_prompt_transcription = "" # Empty transcription
 
