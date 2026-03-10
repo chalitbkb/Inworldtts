@@ -56,6 +56,12 @@ _OUTPUT_PATH = flags.DEFINE_string(
 _USE_VLLM = flags.DEFINE_bool(
     "use_vllm", False,
     "Whether to use vLLM for inference")
+_VLLM_GPU_COUNT = flags.DEFINE_integer(
+    "vllm_gpu_count", 1,
+    "Number of GPUs for vLLM tensor parallelism (1 or 2)")
+_VLLM_GPU_MEMORY = flags.DEFINE_float(
+    "vllm_gpu_memory", 0.7,
+    "GPU memory utilization ratio for vLLM (0.0-1.0)")
 _SEED = flags.DEFINE_integer(
     "seed", 42,
     "Random seed for inference")
@@ -98,8 +104,9 @@ def main(argv: list[str]) -> None:
         model = vllm.LLM(
             model=model_checkpoint_path,
             seed=seed,
-            gpu_memory_utilization=0.7,
-            max_model_len=3072
+            gpu_memory_utilization=_VLLM_GPU_MEMORY.value,
+            max_model_len=3072,
+            tensor_parallel_size=_VLLM_GPU_COUNT.value,
         )
     else:
         start_time = time.time()
