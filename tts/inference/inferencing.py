@@ -146,9 +146,8 @@ def _synthesize_audio(
         # Keep only the audio tokens.
         generated_ids = generated_ids[input_ids.shape[1] - len(speech_ids) : -1]
 
-        # Extract the speech token strings. Direct use of the output tokens
-        # is dangerous, as there might be non-speech tokens in the output.
-        speech_tokens = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        # Extract the speech token strings safely without stripping special tokens.
+        speech_tokens = tokenizer.convert_ids_to_tokens(generated_ids)
         speech_tokens = torch.tensor(extract_speech_ids(speech_tokens))
 
     # Decode the speech tokens to speech waveform.
