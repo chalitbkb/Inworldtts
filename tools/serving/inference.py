@@ -181,7 +181,8 @@ def main(argv: list[str]) -> None:
 
     # Create output directory if it doesn't exist
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    torchaudio.save(output_path, output_wav, audio_decoder.sample_rate)
+    import soundfile as sf
+    sf.write(output_path, output_wav.squeeze().cpu().numpy(), audio_decoder.sample_rate)
 
     # Print results
     logging.info(f"Generated audio saved to: {output_path}")
