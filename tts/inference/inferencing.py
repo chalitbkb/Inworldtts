@@ -143,11 +143,11 @@ def _synthesize_audio(
         # append the prompt speech ids to the generated speech ids
         speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens))
     else:
-        # `generate` often returns `prompt + generated_tokens`. Slice off the input prompt to get only new tokens.
-        # But we also need the speech prompt for continuity. Let's just decode everything generated and let extract_speech_ids handle it.
-        # The prompt itself contains the speech_ids, so we decode the *entire* generated sequence.
-        
-        # Extract the speech token strings from everything the model outputted.
+        # Keep only the audio tokens.
+        generated_ids = generated_ids[input_ids.shape[1] - len(speech_ids) : -1]
+
+        # Extract the speech token strings. Direct use of the output tokens
+        # is dangerous, as there might be non-speech tokens in the output.
         speech_tokens = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
         speech_tokens = torch.tensor(extract_speech_ids(speech_tokens))
 
