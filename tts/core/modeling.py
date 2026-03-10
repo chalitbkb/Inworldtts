@@ -12,7 +12,16 @@ from tts.core import constants, lora
 from tts.data import caching
 from tts.utils import configuration
 
-_ATTN_IMPLEMENTATION = "flash_attention_2"
+def _get_attn_implementation() -> str:
+    """Auto-detect the best attention implementation for the current GPU."""
+    if torch.cuda.is_available():
+        capability = torch.cuda.get_device_capability()
+        if capability[0] >= 8:  # Ampere (A100) or newer
+            return "flash_attention_2"
+    # Turing (T4) or older / CPU → use PyTorch native SDPA
+    return "sdpa"
+
+_ATTN_IMPLEMENTATION = _get_attn_implementation()
 
 
 def _str_to_torch_dtype(dtype: str) -> torch.dtype:

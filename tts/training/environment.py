@@ -142,7 +142,10 @@ def initialize_distributed_environment_context(
         cuda_build_version = torch.version.cuda
         cuda_runtime_version = _get_cuda_version_from_nvidia_smi()
         if not transformers_utils.is_flash_attn_2_available():
-            raise ValueError("Flash attention 2 is not available! Install it!")
+            logging.warning(
+                "Flash attention 2 is not available. "
+                "Falling back to SDPA (slower but works on T4/Turing GPUs)."
+            )
 
     python_version = str(sys.version).replace("\n", "")
     logging.info(
