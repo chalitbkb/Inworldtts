@@ -142,8 +142,8 @@ def _synthesize_audio(
         # append the prompt speech ids to the generated speech ids
         speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens))
     else:
-        # Keep only the audio tokens.
-        generated_ids = generated_ids[input_ids.shape[1] - len(speech_ids) : -1]
+        # Keep only the audio tokens (skip input prompt ids, and skip the eos_token id).
+        generated_ids = generated_ids[input_ids.shape[1] : -1]
 
         # Extract the speech token strings. Direct use of the output tokens
         # is dangerous, as there might be non-speech tokens in the output.
