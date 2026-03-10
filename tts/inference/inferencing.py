@@ -95,7 +95,7 @@ def _generate_speech_tokens(
         model.generate(
             input_ids=input_ids,
             attention_mask=torch.ones_like(input_ids),
-            max_length=inference_settings.max_tokens,
+            max_new_tokens=inference_settings.max_tokens,
             eos_token_id=speech_end_id,
             pad_token_id=speech_end_id,
             do_sample=True if inference_settings.temperature > 0.0 else False,
@@ -148,7 +148,7 @@ def _synthesize_audio(
         # Extract the speech token strings. Direct use of the output tokens
         # is dangerous, as there might be non-speech tokens in the output.
         speech_tokens = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-        speech_tokens = torch.tensor(extract_speech_ids(speech_tokens))
+        speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens))
 
     # Decode the speech tokens to speech waveform.
     with custom_logging.Timer() as timer:
