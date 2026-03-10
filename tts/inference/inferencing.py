@@ -96,6 +96,7 @@ def _generate_speech_tokens(
             input_ids=input_ids,
             attention_mask=torch.ones_like(input_ids),
             max_new_tokens=inference_settings.max_tokens,
+            min_new_tokens=inference_settings.min_tokens,
             eos_token_id=speech_end_id,
             pad_token_id=speech_end_id,
             do_sample=True if inference_settings.temperature > 0.0 else False,
@@ -136,6 +137,8 @@ def _synthesize_audio(
         use_vllm=use_vllm,
     )
 
+    logging.info(f"DEBUG: input_ids shape: {input_ids.shape}, generated_ids shape after generate: {generated_ids.shape}")
+
     # Convert string speech tokens to speech token ids.
     if use_vllm:
         speech_tokens = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
@@ -143,21 +146,41 @@ def _synthesize_audio(
         speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens))
     else:
         # Keep only the audio tokens (skip input prompt ids, and skip the eos_token id).
-        generated_ids = generated_ids[input_ids.shape[1] : -1]
+        # We also handle the case where the model didn't even output eos_token
+        sliced_generated_ids = generated_ids[input_ids.shape[1] :]
+        if len(sliced_generated_ids) > 0 and sliced_generated_ids[-1] == speech_end_id:
+            sliced_generated_ids = sliced_generated_ids[:-1]
+            
+        logging.info(f"DEBUG: generated_ids after slicing off prompt and optional EOS: {len(sliced_generated_ids)}")
 
         # Extract the speech token strings. Direct use of the output tokens
         # is dangerous, as there might be non-speech tokens in the output.
-        speech_tokens = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-        speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens))
+        speech_tokens_str = tokenizer.batch_decode(sliced_generated_ids, skip_special_tokens=True)
+        if len(speech_tokens_str) > 0:
+            logging.info(f"DEBUG: First 5 decoded tokens: {speech_tokens_str[:5]}")
+            logging.info(f"DEBUG: Last 5 decoded tokens: {speech_tokens_str[-5:]}")
+            
+        extracted = extract_speech_ids(speech_tokens_str)
+        logging.info(f"DEBUG: successfully extracted {len(extracted)} speech ids from the strings.")
+        
+        speech_tokens = torch.tensor(speech_ids + extracted)
 
     # Decode the speech tokens to speech waveform.
     with custom_logging.Timer() as timer:
         gen_wav = audio_decoder.decode(speech_tokens)
     decoding_time = timer.get_duration()
 
+    logging.info(f"DEBUG: Initial decoded waveform shape: {gen_wav.shape}")
+    
     prompt_wav_length = len(speech_ids) / audio_decoder.token_rate
     prompt_wav_length = int(prompt_wav_length * audio_decoder.sample_rate)
-    return gen_wav[:, prompt_wav_length:], decoding_time
+    
+    logging.info(f"DEBUG: Prompt length in tokens: {len(speech_ids)}, Prompt length in waveform samples: {prompt_wav_length}")
+    
+    final_wav = gen_wav[:, prompt_wav_length:]
+    logging.info(f"DEBUG: Final sliced waveform shape: {final_wav.shape}")
+
+    return final_wav, decoding_time
 
 
 class LocalTtsModel:
