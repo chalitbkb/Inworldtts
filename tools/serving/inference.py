@@ -155,7 +155,7 @@ def main(argv: list[str]) -> None:
     inference_settings = inferencing.InferenceSettings(
         temperature=0.9,
         max_tokens=1792,
-        min_tokens=200,
+        min_tokens=10,
         top_p=0.95,
         top_k=50,
         repetition_penalty=1.0,
