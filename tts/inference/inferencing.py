@@ -187,7 +187,7 @@ class LocalTtsModel:
         inference_settings: InferenceSettings,
         text_to_synthesize: str,
         prompt_id: str,
-        prompt_wav: torch.Tensor,
+        prompt_wav: torch.Tensor | None,
         audio_prompt_transcription: str,
         voice_description: str = "",
         enable_instruction: bool = True,
@@ -195,7 +195,7 @@ class LocalTtsModel:
         """Synthesizes speech from text using a finetuned FinchTTS model."""
         speech_ids = []
         encoding_time = 0.0
-        if not voice_description or enable_instruction:
+        if prompt_wav is not None and (not voice_description or enable_instruction):
             with custom_logging.Timer() as timer:
                 speech_ids = self._audio_encoder.encode(prompt_id, prompt_wav)
             encoding_time = timer.get_duration()
