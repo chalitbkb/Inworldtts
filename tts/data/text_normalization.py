@@ -41,7 +41,7 @@ _LINGUA_LANG_REVERSE_MAP: dict[lingua.Language, str] = {
 
 # Languages that NeMo text normalizer supports natively.
 # Other languages will pass through without normalization.
-_NEMO_SUPPORTED_LANGS = {"en", "ja", "zh", "es", "fr", "de"}
+_NEMO_SUPPORTED_LANGS = {"en", "zh", "es", "fr", "de"}
 
 # Languages where ASCII conversion should be applied before normalization.
 _ASCII_CONVERT_LANGS = {"en"}
