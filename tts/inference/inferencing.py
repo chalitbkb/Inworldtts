@@ -138,7 +138,10 @@ def _synthesize_audio(
         speech_end_id=speech_end_id,
         use_vllm=use_vllm,
     )
-    logging.info("DEBUG: generated_ids shape after generate: %s", generated_ids.shape)
+    if use_vllm:
+        logging.info("DEBUG: generated_ids length after vLLM generate: %d", len(generated_ids))
+    else:
+        logging.info("DEBUG: generated_ids shape after generate: %s", generated_ids.shape)
 
     # Convert string speech tokens to speech token ids.
     if use_vllm:
