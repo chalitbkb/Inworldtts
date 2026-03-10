@@ -17,9 +17,6 @@ Example usage:
 
 import os
 import time
-from typing import Any
-
-import librosa
 import torch
 import torchaudio
 import transformers
@@ -142,6 +139,11 @@ def main(argv: list[str]) -> None:
         use_vllm=use_vllm
     )
 
+    # Load audio prompt
+    logging.info(f"Loading audio prompt: {prompt_wav_path}")
+    prompt_wav, _ = data_utils.load_wav(
+        prompt_wav_path, target_sample_rate=constants.CODEC_SAMPLE_RATE)
+
     # Inference settings
     inference_settings = inferencing.InferenceSettings(
         temperature=0.8,
@@ -154,18 +156,7 @@ def main(argv: list[str]) -> None:
         seed=42,
     )
 
-    # Load audio prompt only if provided
-    if prompt_wav_path and prompt_wav_path.lower() != 'none':
-        logging.info(f"Loading audio prompt: {prompt_wav_path}")
-        prompt_wav, _ = librosa.load(prompt_wav_path, sr=constants.CODEC_SAMPLE_RATE)
-        prompt_wav = torch.tensor(prompt_wav).unsqueeze(0).to(device)
-        speech_ids = audio_encoder.encode("inference_prompt", prompt_wav)
-        audio_prompt_transcription = prompt_transcription
-    else:
-        logging.info("No audio prompt provided. Synthesizing without prompt.")
-        prompt_wav = None # Explicitly None for no prompt
-        speech_ids = [] # Empty list for no speech prompt
-        audio_prompt_transcription = "" # Empty transcription
+    audio_prompt_transcription = prompt_transcription
 
     # Text Normalization
     text_normalizer = text_normalization.create_text_normalizer(enable_text_normalization)
@@ -203,6 +194,8 @@ if __name__ == "__main__":
         "model_checkpoint_path",
         "audio_encoder_path",
         "audio_decoder_path",
+        "prompt_wav_path",
+        "prompt_transcription",
         "text"
     ])
     app.run(main)

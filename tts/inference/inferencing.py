@@ -96,7 +96,6 @@ def _generate_speech_tokens(
             input_ids=input_ids,
             attention_mask=torch.ones_like(input_ids),
             max_length=inference_settings.max_tokens,
-            min_new_tokens=inference_settings.min_tokens,
             eos_token_id=speech_end_id,
             pad_token_id=speech_end_id,
             do_sample=True if inference_settings.temperature > 0.0 else False,
@@ -187,7 +186,7 @@ class LocalTtsModel:
         inference_settings: InferenceSettings,
         text_to_synthesize: str,
         prompt_id: str,
-        prompt_wav: torch.Tensor | None,
+        prompt_wav: torch.Tensor,
         audio_prompt_transcription: str,
         voice_description: str = "",
         enable_instruction: bool = True,
@@ -195,7 +194,7 @@ class LocalTtsModel:
         """Synthesizes speech from text using a finetuned FinchTTS model."""
         speech_ids = []
         encoding_time = 0.0
-        if prompt_wav is not None and (not voice_description or enable_instruction):
+        if not voice_description or enable_instruction:
             with custom_logging.Timer() as timer:
                 speech_ids = self._audio_encoder.encode(prompt_id, prompt_wav)
             encoding_time = timer.get_duration()
