@@ -75,10 +75,14 @@ def _generate_speech_tokens(
     if use_vllm:
         import vllm
 
+        # Prevent vLLM from infinitely generating <|speech_start|> or looping out of bounds.
+        # We stop either when it predicts <|speech_end|> OR another <|speech_start|>.
+        speech_start_id = 193793  # As per constants and tokenizer.
+        
         sampling_params = vllm.SamplingParams(
             max_tokens=inference_settings.max_tokens,
             min_tokens=inference_settings.min_tokens,
-            stop_token_ids=[speech_end_id],
+            stop_token_ids=[speech_end_id, speech_start_id],
             repetition_penalty=inference_settings.repetition_penalty,
             top_p=inference_settings.top_p,
             top_k=inference_settings.top_k,
