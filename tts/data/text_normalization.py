@@ -41,7 +41,7 @@ _LINGUA_LANG_REVERSE_MAP: dict[lingua.Language, str] = {
 
 # Languages that NeMo text normalizer supports natively.
 # Other languages will pass through without normalization.
-_NEMO_SUPPORTED_LANGS = {"en", "zh", "es", "fr", "de"}
+_NEMO_SUPPORTED_LANGS = {"en", "ja", "zh", "es", "fr", "de"}
 
 # Languages where ASCII conversion should be applied before normalization.
 _ASCII_CONVERT_LANGS = {"en"}
@@ -327,12 +327,15 @@ class NemoTextNormalizer(TextNormalizer):
         # All languages registered in _LINGUA_LANG_MAP are considered "supported".
         self._supported_languages = list(_LINGUA_LANG_MAP.keys())
 
-        # Only create NeMo normalizers for languages that NeMo actually supports.
-        # Other languages will pass through without text normalization.
-        self._normalize_text = {
-            lang: normalize.Normalizer(input_case="cased", lang=lang)
-            for lang in _NEMO_SUPPORTED_LANGS
-        }
+        # Only create NeMo normalizers for languages that NeMo actually supports in this environment.
+        # Use try-except to safely skip languages that cause NotImplementedError (like 'ja' in certain versions).
+        self._normalize_text = {}
+        for lang in _NEMO_SUPPORTED_LANGS:
+            try:
+                self._normalize_text[lang] = normalize.Normalizer(input_case="cased", lang=lang)
+            except NotImplementedError:
+                # Silently skip unsupported languages so the rest of the application can run.
+                pass
         self.lang_detector = None
 
     def init_lang_detector(self):
