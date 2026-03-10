@@ -191,9 +191,7 @@ def load_wav(
         Tuple of (preprocessed audio tensor with shape [1, num_samples], sample rate)
     """
     # Force torchaudio to use soundfile instead of failing torchcodec
-    torchaudio.set_audio_backend("soundfile")
-    
-    wav, sr = torchaudio.load(wav_path)
+    wav, sr = torchaudio.load(wav_path, backend="soundfile")
     if wav.shape[0] > 1:
         wav = wav.mean(dim=0, keepdim=True)
     if target_sample_rate and sr != target_sample_rate:
