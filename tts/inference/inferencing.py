@@ -94,9 +94,11 @@ def _generate_speech_tokens(
     return (
         model.generate(
             input_ids=input_ids,
+            attention_mask=torch.ones_like(input_ids),
             max_length=inference_settings.max_tokens,
             min_new_tokens=inference_settings.min_tokens,
             eos_token_id=speech_end_id,
+            pad_token_id=speech_end_id,
             do_sample=True if inference_settings.temperature > 0.0 else False,
             repetition_penalty=inference_settings.repetition_penalty,
             top_p=inference_settings.top_p,
