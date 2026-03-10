@@ -26,7 +26,7 @@ class DecoderConfig:
         with open(file) as f:
             config = json.load(f)
         return DecoderConfig(
-            model_type=config["model_type"],
+            model_type=config.get("model_type", "xcodec2"),
             sample_rate=config["sample_rate"],
             token_rate=config["token_rate"],
             hop_length=config["hop_length"],
