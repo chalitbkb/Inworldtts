@@ -40,8 +40,6 @@ _ALLOWED_LANGUAGES = flags.DEFINE_list(
     'allowed_languages', None,
     'Comma-separated list of language codes to keep (e.g. "en", "th", '
     '"en,th"). If not set, all languages are kept.')
-_MAX_AUDIO_DURATION = flags.DEFINE_float('max_audio_duration', 15.0,
-                                         'Maximum length of audio in seconds to keep.')
 
 _LOG_EVERY_N_BATCHES = 20
 
@@ -198,8 +196,7 @@ def main(argv: Sequence[str]) -> None:
         max_samples = batch_size * env_context.world_size * 50
     original_samples, _ = data_utils.load_samples(_DATASET_PATH.value,
                                                   max_samples=max_samples,
-                                                  allowed_languages=_ALLOWED_LANGUAGES.value,
-                                                  max_audio_duration=_MAX_AUDIO_DURATION.value)
+                                                  allowed_languages=_ALLOWED_LANGUAGES.value)
     original_samples = data_utils.chunk_work(work_items=original_samples,
                                              worker_id=env_context.global_rank,
                                              num_workers=env_context.world_size)

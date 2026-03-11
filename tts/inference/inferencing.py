@@ -75,14 +75,10 @@ def _generate_speech_tokens(
     if use_vllm:
         import vllm
 
-        # Prevent vLLM from infinitely generating <|speech_start|> or looping out of bounds.
-        # We stop either when it predicts <|speech_end|> OR another <|speech_start|>.
-        speech_start_id = 193793  # As per constants and tokenizer.
-        
         sampling_params = vllm.SamplingParams(
             max_tokens=inference_settings.max_tokens,
             min_tokens=inference_settings.min_tokens,
-            stop_token_ids=[speech_end_id, speech_start_id],
+            stop_token_ids=[speech_end_id],
             repetition_penalty=inference_settings.repetition_penalty,
             top_p=inference_settings.top_p,
             top_k=inference_settings.top_k,
@@ -142,20 +138,13 @@ def _synthesize_audio(
         speech_end_id=speech_end_id,
         use_vllm=use_vllm,
     )
-    if use_vllm:
-        logging.info("DEBUG: generated_ids length after vLLM generate: %d", len(generated_ids))
-    else:
-        logging.info("DEBUG: generated_ids shape after generate: %s", generated_ids.shape)
+    logging.info("DEBUG: generated_ids shape after generate: %s", generated_ids.shape)
 
     # Convert string speech tokens to speech token ids.
     if use_vllm:
-        # vLLM `generate` only returns the newly generated tokens (prompt tokens are NOT included).
-        speech_tokens_str = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
-        new_speech_ids = extract_speech_ids(speech_tokens_str)
+        speech_tokens = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
         # append the prompt speech ids to the generated speech ids
-        speech_tokens = torch.tensor(speech_ids + new_speech_ids)
-        logging.info("DEBUG: decoded %d token strings, extracted %d valid speech IDs (vLLM)",
-                     len(speech_tokens_str), len(new_speech_ids))
+        speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens))
     else:
         # Keep only the audio tokens (skip input prompt ids, and skip the eos_token id).
         new_token_count = generated_ids.shape[0] - input_ids.shape[1]

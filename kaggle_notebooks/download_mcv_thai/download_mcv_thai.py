@@ -153,21 +153,16 @@
         "\n",
         "# อ่านตารางข้อมูลในพริบตา\n",
         "df = pd.read_csv(validated_tsv_path, sep=\"\\t\")\n",
+        "if MAX_CLIPS and MAX_CLIPS < len(df):\n",
+        "    df = df.head(MAX_CLIPS)\n",
+        "\n",
+        "print(f\"Aiming to process {len(df)} validated clips.\")\n",
         "\n",
         "durations_dict = {}\n",
         "if os.path.exists(clip_durations_path):\n",
         "    df_durations = pd.read_csv(clip_durations_path, sep=\"\\t\")\n",
         "    for _, r in df_durations.iterrows():\n",
-        "        durations_dict[r[\"clip\"]] = float(r[\"duration[ms]\"]) / 1000.0\n",
-        "        \n",
-        "    # 🧹 คัดกรองเอาเฉพาะเสียงยาว 5.0 - 15.0 วินาที ช่วยให้โมเดลฉลาดและเป็นธรรมชาติ\n",
-        "    valid_clips = [clip for clip, dur in durations_dict.items() if 5.0 <= dur <= 15.0]\n",
-        "    df = df[df['path'].isin(valid_clips)]\n",
-        "\n",
-        "if MAX_CLIPS and MAX_CLIPS < len(df):\n",
-        "    df = df.head(MAX_CLIPS)\n",
-        "\n",
-        "print(f\"Aiming to process {len(df)} validated clips (Filtered 5-15s).\")\n"
+        "        durations_dict[r[\"clip\"]] = float(r[\"duration[ms]\"]) / 1000.0"
       ]
     },
     {

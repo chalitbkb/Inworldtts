@@ -17,15 +17,9 @@ def filter_unknown_language(sample: data_sample.Sample):
     return None
 
 
-def filter_max_audio_duration(max_audio_duration: float):
-    """Factory: filter if duration is greater than max_audio_duration."""
-
-    def _filter(sample: data_sample.Sample):
-        if sample.duration > max_audio_duration:
-            return "long_duration"
-        return None
-
-    return _filter
+def filter_long_duration(sample: data_sample.Sample):
+    """Filter if duration is greater than 30.0 seconds."""
+    return "long_duration" if sample.duration > 30.0 else None
 
 
 def filter_punct_or_space_only_transcript(sample: data_sample.Sample):

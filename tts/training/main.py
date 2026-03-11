@@ -149,20 +149,15 @@ def run_training(
             num_workers=config.training.num_workers,
         )
 
-        # Calculate steps per epoch from the data loader.
+        # A single epoch will be used for logging. Number of steps already has
+        # all the information for how many actual epochs each dataset will be processed.
         steps_per_epoch = int(
             len(train_data_loader)
             / fabric.world_size
             / config.training.gradient_accumulation_steps
         )
+        config.dataset.total_training_steps = steps_per_epoch
         config.dataset.steps_per_epoch = steps_per_epoch
-        # Compute total training steps from num_epochs.
-        num_epochs = max(1, config.dataset.num_epochs)
-        config.dataset.total_training_steps = steps_per_epoch * num_epochs
-        logging.info(
-            "Training for %d epochs × %d steps/epoch = %d total steps.",
-            num_epochs, steps_per_epoch, config.dataset.total_training_steps,
-        )
     logging.info(
         "Datasets were loaded in %.2f seconds. Config: %s.",
         t.get_duration(),

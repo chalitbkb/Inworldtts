@@ -49,16 +49,12 @@ class DatasetConfig:
     # Whether to enable RLHF (Reinforcement Learning from Human Feedback) training.
     enable_rlhf_training: bool
     # Minimum audio duration for dataset filtering.
-    min_audio_duration: float = 0.5
-    # Maximum audio duration for dataset filtering.
-    max_audio_duration: float = 15.0
+    min_audio_duration: float = 0.0
     # List of allowed instruction finetuning annotations.
     # If empty or None, no instruction finetuning will be done.
     allowed_ift_annotations: list[str] | None = None
-    # Number of epochs to train for. Defaults to 1.
-    num_epochs: int = 1
     # The total number of training steps needed to traverse the dataset.
-    # Computed automatically as steps_per_epoch * num_epochs if not set.
+    # To be set when loading the dataset.
     total_training_steps: int | None = None
     # The number of steps needed to traverse the dataset once.
     # To be set when loading the dataset.
