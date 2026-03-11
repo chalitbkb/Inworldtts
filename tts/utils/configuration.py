@@ -55,8 +55,10 @@ class DatasetConfig:
     # List of allowed instruction finetuning annotations.
     # If empty or None, no instruction finetuning will be done.
     allowed_ift_annotations: list[str] | None = None
+    # Number of epochs to train for. Defaults to 1.
+    num_epochs: int = 1
     # The total number of training steps needed to traverse the dataset.
-    # To be set when loading the dataset.
+    # Computed automatically as steps_per_epoch * num_epochs if not set.
     total_training_steps: int | None = None
     # The number of steps needed to traverse the dataset once.
     # To be set when loading the dataset.
