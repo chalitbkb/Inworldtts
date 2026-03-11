@@ -321,6 +321,51 @@
         "print(f\"  Bitrate:  {TARGET_SAMPLE_RATE}Hz Mono\")",
         "\nsys.stdout.flush()\n"
       ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "### 🔊 ส่วนที่ 6: ดาวน์โหลด xcodec2 Audio Codec (หูและปากของโมเดล)\n",
+        "xcodec2 คือโปรแกรมแปลงเสียง ↔ รหัสตัวเลข ที่ Llama จะใช้ในการ:\n",
+        "1. **Encoder (หู):** แปลงไฟล์เสียง .wav → Acoustic Tokens สำหรับเทรน\n",
+        "2. **Decoder (ปาก):** แปลง Acoustic Tokens → ไฟล์เสียง .wav สำหรับ Inference\n",
+        "\n",
+        "> 💡 ดาวน์โหลดไว้ใน Output ของ Notebook 1 นี้ เพื่อให้ Notebook 2 ใช้เป็น Input ฟรีๆ\n",
+        "> ไม่ต้องเสียเวลาโหลดซ้ำทุกรอบ และไม่กิน Disk ฝั่ง Working ตอนเทรน!"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# ดาวน์โหลด xcodec2 checkpoint (~1.1GB) จาก HuggingFace\n",
+        "# ไฟล์นี้จะถูกรวมอยู่ใน Output Dataset ของ Notebook 1\n",
+        "# เมื่อ Notebook 2 เพิ่ม Output นี้เป็น Input → จะอ่านไฟล์ได้ฟรีๆ ไม่กิน Working Disk\n",
+        "\n",
+        "XCODEC2_DIR = os.path.join(KAGGLE_WORKING, 'xcodec2_ckpt')\n",
+        "XCODEC2_PATH = os.path.join(XCODEC2_DIR, 'checkpoint.pt')\n",
+        "XCODEC2_URL = 'https://huggingface.co/HKUSTAudio/xcodec2/resolve/main/ckpt/epoch%3D4-step%3D1400000.ckpt'\n",
+        "\n",
+        "os.makedirs(XCODEC2_DIR, exist_ok=True)\n",
+        "\n",
+        "if not os.path.exists(XCODEC2_PATH):\n",
+        "    print('📥 Downloading xcodec2 checkpoint (~1.1GB)...')\n",
+        "    subprocess.run([\n",
+        "        'aria2c', '-x', '16', '-s', '16', '-k', '1M',\n",
+        "        '-o', 'checkpoint.pt', '-d', XCODEC2_DIR, XCODEC2_URL\n",
+        "    ], check=True)\n",
+        "    print(f'✅ xcodec2 checkpoint saved to: {XCODEC2_PATH}')\n",
+        "else:\n",
+        "    print(f'✅ xcodec2 checkpoint already exists: {XCODEC2_PATH}')\n",
+        "\n",
+        "# ตรวจสอบขนาดไฟล์\n",
+        "size_mb = os.path.getsize(XCODEC2_PATH) / (1024**2)\n",
+        "print(f'📦 File size: {size_mb:.1f} MB')\n",
+        "print(f'\\n🎯 เมื่อกด Save Version → Output จะมี xcodec2_ckpt/checkpoint.pt พร้อมใช้!')\n"
+      ]
     }
   ],
   "metadata": {
