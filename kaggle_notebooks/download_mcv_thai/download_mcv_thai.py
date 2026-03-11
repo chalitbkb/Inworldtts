@@ -363,8 +363,123 @@
         "\n",
         "# ตรวจสอบขนาดไฟล์\n",
         "size_mb = os.path.getsize(XCODEC2_PATH) / (1024**2)\n",
-        "print(f'📦 File size: {size_mb:.1f} MB')\n",
-        "print(f'\\n🎯 เมื่อกด Save Version → Output จะมี xcodec2_ckpt/checkpoint.pt พร้อมใช้!')\n"
+        "print(f'📦 File size: {size_mb:.1f} MB')\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "### 🧬 ส่วนที่ 7: แปลงเสียง → Acoustic Tokens (Data Vectorization)\n",
+        "LLaMA ไม่สามารถฟังเสียง `.wav` โดยตรงได้ ต้องแปลงเป็นรหัสตัวเลข (Tokens) ก่อน\n",
+        "\n",
+        "ขั้นตอนนี้ใช้ xcodec2 Encoder แปลงไฟล์ `.wav` ทั้งหมด → ชุดตัวเลข\n",
+        "แล้วเก็บไว้ใน Output เพื่อให้ Notebook 2 อ่านจาก Input ได้เลย\n",
+        "\n",
+        "> ⚠️ **ต้องเปิด GPU (T4 x2)** สำหรับขั้นตอนนี้!\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# --- โคลน InworldTTS + ติดตั้ง Dependencies (จำเป็นสำหรับ data_vectorizer.py) ---\n",
+        "REPO_URL = 'https://github.com/chalitbkb/Inworldtts.git'\n",
+        "REPO_DIR = '/kaggle/working/Inworldtts'\n",
+        "\n",
+        "if not os.path.exists(REPO_DIR):\n",
+        "    print('📥 Cloning InworldTTS...')\n",
+        "    subprocess.run(['git', 'clone', REPO_URL, REPO_DIR], check=True)\n",
+        "else:\n",
+        "    print('✅ InworldTTS already cloned.')\n",
+        "\n",
+        "# ติดตั้ง dependencies\n",
+        "!pip install -e {REPO_DIR} --quiet 2>&1 | tail -3\n",
+        "print('✅ InworldTTS dependencies installed.')\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# --- คัดลอก model_config.json ไว้ข้างๆ checkpoint.pt ---\n",
+        "import shutil\n",
+        "CODEC_CONFIG_SRC = os.path.join(REPO_DIR, 'example', 'codec', 'model_config.json')\n",
+        "CODEC_CONFIG_DST = os.path.join(XCODEC2_DIR, 'model_config.json')\n",
+        "if not os.path.exists(CODEC_CONFIG_DST):\n",
+        "    shutil.copy2(CODEC_CONFIG_SRC, CODEC_CONFIG_DST)\n",
+        "    print(f'✅ Copied model_config.json → {CODEC_CONFIG_DST}')\n",
+        "\n",
+        "# --- ตั้งค่า Vectorization ---\n",
+        "LANGUAGE       = 'th'\n",
+        "VEC_BATCH_SIZE = 16\n",
+        "VEC_NUM_WORKERS = 4\n",
+        "VAL_SPLIT      = 0.005\n",
+        "VECTORIZED_DIR = os.path.join(KAGGLE_WORKING, 'vectorized_th')\n",
+        "os.makedirs(VECTORIZED_DIR, exist_ok=True)\n",
+        "\n",
+        "# --- รัน Data Vectorization ---\n",
+        "os.chdir(REPO_DIR)\n",
+        "import torch\n",
+        "gpu_count = torch.cuda.device_count()\n",
+        "nproc = gpu_count if gpu_count > 0 else 1\n",
+        "print(f'⚡ GPUs: {gpu_count}, using {nproc} for vectorization!')\n",
+        "\n",
+        "!torchrun --nproc_per_node={nproc} tools/data/data_vectorizer.py \\\\\n",
+        "    --codec_model_path={XCODEC2_PATH} \\\\\n",
+        "    --batch_size={VEC_BATCH_SIZE} \\\\\n",
+        "    --num_workers={VEC_NUM_WORKERS} \\\\\n",
+        "    --compile_model \\\\\n",
+        "    --dataset_path={OUTPUT_JSONL} \\\\\n",
+        "    --output_dir={VECTORIZED_DIR} \\\\\n",
+        "    --allowed_languages={LANGUAGE} \\\\\n",
+        "    --val_split={VAL_SPLIT}\n",
+        "\n",
+        "print('\\n✅ Data Vectorization complete!')\n",
+        "!ls -lh {VECTORIZED_DIR}/\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# --- รวมชิ้นส่วนข้อมูล (Merge Shards) ---\n",
+        "os.chdir(REPO_DIR)\n",
+        "!python tools/data/data_merger.py \\\\\n",
+        "    --dataset_path={VECTORIZED_DIR} \\\\\n",
+        "    --remove_shards\n",
+        "\n",
+        "print('\\n✅ Shards merged!')\n",
+        "!ls -lh {VECTORIZED_DIR}/\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": [
+        "# --- ลบ Repo InworldTTS (ไม่ต้องเก็บใน Output) ---\n",
+        "import shutil\n",
+        "if os.path.exists(REPO_DIR):\n",
+        "    shutil.rmtree(REPO_DIR)\n",
+        "    print(f'🗑️ Removed {REPO_DIR}')\n",
+        "\n",
+        "print('\\n' + '=' * 60)\n",
+        "print('🎯 Output Dataset จะมีไฟล์ดังนี้:')\n",
+        "print('=' * 60)\n",
+        "print(f'  📂 dataset/th_wavs/     → ไฟล์เสียง .wav')\n",
+        "print(f'  📄 dataset/train.jsonl  → ตาราง metadata')\n",
+        "print(f'  🔊 xcodec2_ckpt/       → Audio Codec')\n",
+        "print(f'  🧬 vectorized_th/      → Acoustic Tokens')\n",
+        "print(f'\\n💡 กด Save Version แล้วเพิ่ม Output เป็น Input ของ Notebook 2!')\n",
+        "!du -sh /kaggle/working/*/\n"
       ]
     }
   ],
