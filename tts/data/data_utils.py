@@ -38,6 +38,7 @@ def load_samples(
     dataset_path: str,
     max_samples: int = -1,
     allowed_languages: list[str] | None = None,
+    max_audio_duration: float = 15.0,
 ) -> tuple[list[data_sample.Sample], float]:
     """Loads samples from a dataset.
 
@@ -46,12 +47,13 @@ def load_samples(
         max_samples: Maximum number of samples to load (-1 for all).
         allowed_languages: List of language codes to keep (e.g. ["en"],
             ["th"], ["en", "th"]). If None or empty, all languages are kept.
+        max_audio_duration: Maximum audio duration in seconds.
     """
     filters = [
         filtering.filter_empty_transcript,
         filtering.filter_unknown_language,
         filtering.filter_allowed_languages(allowed_languages or []),
-        filtering.filter_long_duration,
+        filtering.filter_max_audio_duration(max_audio_duration),
         filtering.filter_punct_or_space_only_transcript,
     ]
 
