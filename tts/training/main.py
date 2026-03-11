@@ -149,15 +149,23 @@ def run_training(
             num_workers=config.training.num_workers,
         )
 
-        # A single epoch will be used for logging. Number of steps already has
-        # all the information for how many actual epochs each dataset will be processed.
+        # Calculate steps per epoch from the data loader.
         steps_per_epoch = int(
             len(train_data_loader)
             / fabric.world_size
             / config.training.gradient_accumulation_steps
         )
-        config.dataset.total_training_steps = steps_per_epoch
         config.dataset.steps_per_epoch = steps_per_epoch
+        # Respect total_training_steps if already set in config (e.g. from
+        # EPOCHS * steps_per_epoch computed in the notebook). Only fall back
+        # to a single epoch when it has not been specified.
+        if not config.dataset.total_training_steps or config.dataset.total_training_steps <= 0:
+            config.dataset.total_training_steps = steps_per_epoch
+            logging.info("total_training_steps not set in config, defaulting to 1 epoch = %d steps.", steps_per_epoch)
+        else:
+            logging.info("Using total_training_steps from config: %d (steps_per_epoch: %d, ~%.1f epochs).",
+                         config.dataset.total_training_steps, steps_per_epoch,
+                         config.dataset.total_training_steps / max(steps_per_epoch, 1))
     logging.info(
         "Datasets were loaded in %.2f seconds. Config: %s.",
         t.get_duration(),
