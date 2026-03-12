@@ -318,8 +318,9 @@
         "print(f\"  WAV Dir:  {OUTPUT_WAV_DIR}\")\n",
         "print(f\"  JSONL:    {OUTPUT_JSONL}\")\n",
         "print(f\"  Clips:    {len(jsonl_lines)}\")\n",
-        "print(f\"  Bitrate:  {TARGET_SAMPLE_RATE}Hz Mono\")",
-        "\nsys.stdout.flush()\n"
+        "print(f\"  Bitrate:  {TARGET_SAMPLE_RATE}Hz Mono\")\n",
+        "\n",
+        "sys.stdout.flush()\n"
       ]
     },
     {
@@ -416,9 +417,12 @@
         "\n",
         "# --- ตั้งค่า Vectorization ---\n",
         "LANGUAGE       = 'th'\n",
-        "VEC_BATCH_SIZE = 16\n",
-        "VEC_NUM_WORKERS = 4\n",
-        "VAL_SPLIT      = 0.005\n",
+        "# --- 🧬 Vectorization Settings---\n",
+        "VEC_BATCH_SIZE  = 16    # จำนวนไฟล์เสียงต่อรอบที่ส่งเข้า Encoder พร้อมกัน\n",
+        "                        # ↑ T4 15GB: Encoder (w2v-bert-2.0) ใช้ ~0.8GB/batch\n",
+        "                        #   batch=16 ใช้ ~13GB (รีดเต็มกำลังโดยไม่ OOM)\n",
+        "VEC_NUM_WORKERS = 4     # จำนวน CPU threads โหลดข้อมูลเข้า GPU\n",
+        "                        # ↑ Kaggle มี 4 CPU cores → ใส่ให้เต็มไม่ให้ GPU รอ\n",
         "VECTORIZED_DIR = os.path.join(KAGGLE_WORKING, 'vectorized_th')\n",
         "os.makedirs(VECTORIZED_DIR, exist_ok=True)\n",
         "\n",
