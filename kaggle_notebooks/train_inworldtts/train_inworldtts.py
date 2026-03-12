@@ -143,8 +143,8 @@
         "\n",
         "print('✅ Control Panel loaded!')\n",
         "print(f'📐 Effective batch size: {BATCH_SIZE} × {GRAD_ACCUM} × 2 GPUs = {BATCH_SIZE*GRAD_ACCUM*2}')\n",
-        "print(f'📐 Estimated steps: ~{int(8640 * NUM_EPOCHS / BATCH_SIZE / 2 / GRAD_ACCUM)} steps ({NUM_EPOCHS} epochs)')\n",
-        "print(f'📐 Estimated time: ~{int(8640 * NUM_EPOCHS / BATCH_SIZE / 2 / GRAD_ACCUM * 2.5 / 60)} minutes')\n"
+        "print(f'📐 Estimated steps: ~{int(9294 * NUM_EPOCHS / BATCH_SIZE / 2 / GRAD_ACCUM)} steps ({NUM_EPOCHS} epochs)')\n",
+        "print(f'📐 Estimated time: ~{int(9294 * NUM_EPOCHS / BATCH_SIZE / 2 / GRAD_ACCUM * 2.5 / 60)} minutes')\n"
       ]
     },
     {
@@ -421,11 +421,11 @@
         "| `batch_size` | `2` | VRAM 15GB ของ T4 รองรับได้แค่นี้ |\n",
         "| `gradient_accumulation_steps` | `4` | จำลอง effective batch = 8 ช่วยให้ Loss เสถียร |\n",
         "| `gradient_checkpointing` | `true` | ประหยัด VRAM ~40% |\n",
-        "| `learning_rate` | `5e-05` | LoRA ไม่ต้องใช้ LR สูง เพราะ Base ถูก Freeze |\n",
-        "| `lora.r` | `16` | Sweet Spot สำหรับ TTS Voice Cloning |\n",
+        "| `learning_rate` | `3e-05` | ลด LR ป้องกันโมเดลหลงทาง (Diverge) ที่เคยเกิดกับ 1e-4 |\n",
+        "| `lora.r` | `16` | สมดุลระหว่างเรียนรู้กับป้องกัน Overfit |\n",
         "| `lora.lora_alpha` | `32` | = 2 × r ตามสูตรมาตรฐาน |\n",
         "| `lora.target_modules` | `[]` | ว่างไว้ = ระบบจะหา Linear Layers อัตโนมัติ |\n",
-        "| `keep_only_last_n_checkpoints` | `3` | ประหยัดพื้นที่ Kaggle ไม่เก็บ checkpoint เก่า |\n"
+        "| `keep_only_last_n_checkpoints` | `10` | เก็บ checkpoint มากขึ้น ไม่ลบตัวดี |\n"
       ]
     },
     {
@@ -476,7 +476,7 @@
       "source": [
         "---\n",
         "## ขั้นที่ 6: 🧹 ทำความสะอาด & แปลงโมเดล (Cleanup & Checkpoint Conversion)\n",
-        "กำจัดไฟล์ขยะจากขั้นตอน Vectorization ที่ทำเสร็จแล้ว (อาจใหญ่ถึง 15-20GB)\n",
+        "ลบ checkpoint ระหว่างเทรน (เก็บไว้แค่ final) เพื่อเปิดพื้นที่ disk\n",
         "จากนั้นแปลง LoRA Checkpoint ให้อยู่ในรูปแบบพร้อมเสิร์ฟ (Serving Format)\n",
         "เพื่อนำไปทำ Zero-Shot Voice Cloning ได้ทันที\n"
       ]
