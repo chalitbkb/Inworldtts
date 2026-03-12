@@ -151,8 +151,8 @@ def main(argv: list[str]) -> None:
         min_tokens=200,
         top_p=0.95,
         top_k=50,
-        repetition_penalty=1.0,
-        frequency_penalty=0.0,
+        repetition_penalty=1.2,
+        frequency_penalty=0.3,
         seed=42,
     )
 
