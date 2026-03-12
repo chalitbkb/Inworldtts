@@ -122,7 +122,7 @@
         "                        # ↑ ตรงจังหวะ SAVE_STEPS เพื่อเห็น loss ตอน save\n",
         "LOG_STEPS       = 50    # แสดงผล Train Loss ทุกๆ กี่ step\n",
         "                        # ↑ 50 = ถี่พอติดตามแนวโน้ม ไม่ท่วม console\n",
-        "KEEP_N_CKPTS    = 10    # เก็บ checkpoint ล่าสุดกี่ไฟล์ (ลบเก่าอัตโนมัติ)\n",
+        "KEEP_N_CKPTS    = 3    # เก็บ checkpoint ล่าสุดกี่ไฟล์ (ลบเก่าอัตโนมัติ)\n",
         "                        # ↑ เก็บมากขึ้น! ป้องกันไม่ให้ checkpoint ดีถูกลบ\n",
         "\n",
         "# --- 📈 Epochs (จำนวนรอบเรียนรู้) ---\n",
@@ -425,7 +425,7 @@
         "| `lora.r` | `16` | สมดุลระหว่างเรียนรู้กับป้องกัน Overfit |\n",
         "| `lora.lora_alpha` | `32` | = 2 × r ตามสูตรมาตรฐาน |\n",
         "| `lora.target_modules` | `[]` | ว่างไว้ = ระบบจะหา Linear Layers อัตโนมัติ |\n",
-        "| `keep_only_last_n_checkpoints` | `10` | เก็บ checkpoint มากขึ้น ไม่ลบตัวดี |\n"
+        "| `keep_only_last_n_checkpoints` | `3` | ประหยัดพื้นที่ Kaggle ไม่เก็บ checkpoint เก่า |\n"
       ]
     },
     {
