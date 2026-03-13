@@ -144,9 +144,9 @@ def _synthesize_audio(
 
     # Convert string speech tokens to speech token ids.
     if use_vllm:
-        speech_tokens = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        speech_tokens_str = tokenizer.convert_ids_to_tokens(generated_ids.tolist(), skip_special_tokens=True)
         # append the prompt speech ids to the generated speech ids
-        speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens))
+        speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens_str))
     else:
         # Keep only the audio tokens (skip input prompt ids, and skip the eos_token id).
         new_token_count = generated_ids.shape[0] - input_ids.shape[1]
@@ -157,7 +157,7 @@ def _synthesize_audio(
 
         # Extract the speech token strings. Direct use of the output tokens
         # is dangerous, as there might be non-speech tokens in the output.
-        speech_tokens_str = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
+        speech_tokens_str = tokenizer.convert_ids_to_tokens(generated_ids.tolist(), skip_special_tokens=True)
         new_speech_ids = extract_speech_ids(speech_tokens_str)
         logging.info("DEBUG: decoded %d token strings, extracted %d valid speech IDs",
                      len(speech_tokens_str), len(new_speech_ids))
