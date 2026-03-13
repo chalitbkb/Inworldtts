@@ -70,6 +70,7 @@ def _generate_speech_tokens(
     inference_settings: InferenceSettings,
     speech_end_id: int,
     use_vllm: bool = False,
+    model_device: torch.device | None = None,
 ) -> torch.Tensor:
     """Implements actual speech token generation logic."""
     if use_vllm:
@@ -89,7 +90,7 @@ def _generate_speech_tokens(
         outputs = model.generate(
             prompt_token_ids=input_ids[0].tolist(), sampling_params=sampling_params
         )
-        return outputs[0].outputs[0].token_ids
+        return torch.tensor(outputs[0].outputs[0].token_ids, device=model_device)
 
     return (
         model.generate(
@@ -137,6 +138,7 @@ def _synthesize_audio(
         inference_settings=inference_settings,
         speech_end_id=speech_end_id,
         use_vllm=use_vllm,
+        model_device=model_device,
     )
     logging.info("DEBUG: generated_ids shape after generate: %s", generated_ids.shape)
 
