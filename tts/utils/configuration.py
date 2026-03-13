@@ -86,6 +86,13 @@ class CheckpointingConfig:
     # "prompt_continuation")
     validation_type: str = "random_phrases"
 
+    # Validation custom parameters for prompts and texts
+    validation_prompt_wav: str | None = None
+    validation_prompt_text: str | None = None
+    validation_test_phrases: list[str] | None = None
+    codec_encoder_checkpoint_path: str | None = None
+    codec_decoder_checkpoint_path: str | None = None
+
     # Whether to keep only the last N checkpoints.
     keep_only_last_n_checkpoints: int | None = None
 

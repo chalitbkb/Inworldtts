@@ -217,6 +217,7 @@ def run_training(
             world_size=fabric.world_size,
             device=fabric.device,
             validation_type=config.checkpointing.validation_type,
+            checkpointing_config=config.checkpointing,
         )
     logging.info("Quality validator created in %.2f seconds.", t.get_duration())
 

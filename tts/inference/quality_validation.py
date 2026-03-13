@@ -11,93 +11,6 @@ from tts.core.codec import decoding, encoding
 from tts.data import data_utils, text_normalization
 from tts.inference import inferencing
 
-_DEFAULT_ENCODER_CHECKPOINT_PATH = "/path/to/some-982760.pt"
-_DEFAULT_DECODER_CHECKPOINT_PATH = "/path/to/some-9a5f5d.pt"
-_DEFAULT_PROMPT_WAVS = {
-    "/path/to/some-91f247.wav": (
-        "It was extremely dark, this passage, after the blinding sunlight "
-        "reflected from the sulfurous ground."
-    ),
-    "/path/to/some-438d0c.wav": (
-        "Unveiling our summer collection, dive into vibrant colors and "
-        "unparalleled designs."
-    ),
-    "/path/to/some-c3f992.wav": "Dogs are sitting by the door.",
-}
-
-_DEFAULT_PHRASES = [
-    "Hello, how are you?",  #
-    "I'm doing really well, thank you!",  #
-    "Wow!",  #
-    "Aha",
-    "No",
-    "Yes",
-    "Once upon a time, there was a cat.",
-    "Hmmm, ok...",  #
-    "Ahah hahah hahaha hahah",  #
-    (
-        "Uh, honestly, I'm not too sure about that, but, like, I kinda remember "
-        "hearing something about it on the radio last week or so."
-    ),  #
-    (
-        "Yeah, so, you know, I was thinking maybe we could try that new pizza "
-        "place on, uh, what was it—Main Street, I think?"
-    ),  #
-    (
-        "Dude, I swear, it was, like, the funniest thing ever. I mean, I can't "
-        "even explain it, you just had to be there."
-    ),  #
-    (
-        "Wait, hold up a second, lemme think... oh yeah, that was totally the "
-        "restaurant I was talking about earlier."
-    ),  #
-    (
-        "I guess, I mean, it's probably fine, right? Like, I don't really see a "
-        "huge problem with it or anything—unless you do, or whatever."
-    ),  #
-    "Can you please call +1 650 999 9999?",  #
-    "The total amount is going to be around $1,456.79.",  #
-    "We haven't seen each other in a while. How have you been, huh!?",  #
-    (
-        "She sells seashells by the seashore. The shells she sells are surely "
-        "seashells. So if she sells shells on the seashore, I'm sure she sells "
-        "seashore shells"
-    ),  #
-    (
-        "Fuzzy Wuzzy was a bear. Fuzzy Wuzzy had no hair. Fuzzy Wuzzy wasn't very "
-        "fuzzy, was he?"
-    ),  #
-    (
-        "Peter Piper picked a peck of pickled peppers. A peck of pickled peppers "
-        "Peter Piper picked. If Peter Piper picked a peck of pickled peppers, "
-        "where's the peck of pickled peppers Peter Piper picked?"
-    ),  #
-    (
-        "I was just a normal person,  walking down the street, minding my own "
-        "business. And then! All of a sudden, a truck - a huge truck - hit me! "
-        "Now I am a superhero... the one... the only... Truck Man!"
-    ),
-]
-
-# Thai validation phrases for quality checking during training.
-_DEFAULT_PHRASES_TH = [
-    "สวัสดีครับ สบายดีไหม",
-    "ขอบคุณมากครับ ยินดีที่ได้รู้จัก",
-    "วันนี้อากาศดีมากเลย ออกไปเดินเล่นกันไหม",
-    "ว้าว!",
-    "อืม... ได้เลยครับ",
-    "ใช่ครับ",
-    "ไม่ครับ",
-    "กาลครั้งหนึ่งนานมาแล้ว มีแมวตัวหนึ่งอาศัยอยู่ในป่าลึก",
-    (
-        "เอ่อ จริงๆ แล้วผมก็ไม่ค่อยแน่ใจเหมือนกันนะครับ แต่ว่าผมจำได้ว่า"
-        "เคยได้ยินเรื่องนี้มาจากวิทยุเมื่อสัปดาห์ที่แล้ว"
-    ),
-    (
-        "ราคาทั้งหมดจะอยู่ที่ประมาณหนึ่งพันสี่ร้อยห้าสิบหกบาทเจ็ดสิบเก้าสตางค์"
-    ),
-]
-
 _TEST_COMBINATION = tuple[str, str, str]
 
 
@@ -126,13 +39,13 @@ def _unwrap_model(model: torch.nn.Module) -> torch.nn.Module:
     return result
 
 
-def _get_all_test_combinations() -> list[_TEST_COMBINATION]:
+def _get_test_combinations(
+    prompt_wav_path: str, prompt_text: str, phrases: list[str]
+) -> list[_TEST_COMBINATION]:
     """Returns all test combinations of prompt wavs and phrases."""
     result = []
-    prompt_wavs = sorted(_DEFAULT_PROMPT_WAVS.items(), key=lambda x: x[0])
-    for prompt_wav_path, prompt_text in prompt_wavs:
-        for phrase in _DEFAULT_PHRASES:
-            result.append((prompt_wav_path, prompt_text, phrase))
+    for phrase in phrases:
+        result.append((prompt_wav_path, prompt_text, phrase))
     return result
 
 
@@ -163,8 +76,11 @@ class RandomPhrasesSynthesizer(QualityValidator):
         world_size: int,
         device: torch.device,
         prompt_compiler: prompting.PromptCompiler,
-        codec_encoder_checkpoint_path: str = _DEFAULT_ENCODER_CHECKPOINT_PATH,
-        codec_decoder_checkpoint_path: str = _DEFAULT_DECODER_CHECKPOINT_PATH,
+        prompt_wav_path: str | None,
+        prompt_text: str | None,
+        phrases: list[str] | None,
+        codec_encoder_checkpoint_path: str | None,
+        codec_decoder_checkpoint_path: str | None,
         enable_text_normalization: bool = True,
     ):
         self._tokenizer = tokenizer
@@ -177,6 +93,9 @@ class RandomPhrasesSynthesizer(QualityValidator):
         self._world_size = world_size
         self._device = device
         self._prompt_compiler = prompt_compiler
+        self._prompt_wav_path = prompt_wav_path
+        self._prompt_text = prompt_text
+        self._phrases = phrases
         # By default, we enable text normalization.
         self._text_normalizer = text_normalization.create_text_normalizer(
             enable_text_normalization
@@ -220,7 +139,17 @@ class RandomPhrasesSynthesizer(QualityValidator):
             generation_dir,
         )
 
-        test_combinations = self._select_test_combinations(_get_all_test_combinations())
+        if not self._prompt_wav_path or not self._prompt_text or not self._phrases:
+            test_combinations = []
+        else:
+            test_combinations = self._select_test_combinations(
+                _get_test_combinations(str(self._prompt_wav_path), str(self._prompt_text), self._phrases)
+            )
+
+        if not test_combinations:
+            logging.warning("No test combinations available for Quality Validation.")
+            return
+
         logging.info("Synthesizing %d phrases...", len(test_combinations))
 
         # TODO: support batch inference.
@@ -256,9 +185,9 @@ class PromptContinuationValidator(QualityValidator):
         global_rank: int,
         world_size: int,
         device: torch.device,
-        prompt_wav_paths: list[str] | None = None,
-        codec_encoder_checkpoint_path: str = _DEFAULT_ENCODER_CHECKPOINT_PATH,
-        codec_decoder_checkpoint_path: str = _DEFAULT_DECODER_CHECKPOINT_PATH,
+        prompt_wav_path: str | None,
+        codec_encoder_checkpoint_path: str | None,
+        codec_decoder_checkpoint_path: str | None,
     ):
         """Initializes the prompt continuation validator."""
         self._tokenizer = tokenizer
@@ -273,8 +202,7 @@ class PromptContinuationValidator(QualityValidator):
         self._world_size = world_size
         self._device = device
 
-        # Use provided prompt paths or default ones
-        self._prompt_wav_paths = prompt_wav_paths or list(_DEFAULT_PROMPT_WAVS.keys())
+        self._prompt_wav_paths = [prompt_wav_path] if prompt_wav_path else []
 
     def validate(self, model: torch.nn.Module, step: int):
         """Validates the model by continuing audio prompts."""
@@ -337,9 +265,14 @@ def create_quality_validator(
     world_size: int,
     device: torch.device,
     validation_type: str,
+    checkpointing_config=None,
 ) -> QualityValidator:
     """Creates a quality validator for master process based on the provided settings."""
     if not save_intermediate_generations:
+        return NoOpQualityValidator()
+
+    if not checkpointing_config or not checkpointing_config.codec_encoder_checkpoint_path or not checkpointing_config.codec_decoder_checkpoint_path:
+        logging.warning("Codec checkpoint path is not provided. Quality validation is disabled.")
         return NoOpQualityValidator()
 
     if validation_type == "prompt_continuation":
@@ -349,6 +282,9 @@ def create_quality_validator(
             global_rank=global_rank,
             world_size=world_size,
             device=device,
+            prompt_wav_path=checkpointing_config.validation_prompt_wav,
+            codec_encoder_checkpoint_path=checkpointing_config.codec_encoder_checkpoint_path,
+            codec_decoder_checkpoint_path=checkpointing_config.codec_decoder_checkpoint_path,
         )
     prompt_compiler = prompting.InferencePromptCompiler()
     return RandomPhrasesSynthesizer(
@@ -358,4 +294,10 @@ def create_quality_validator(
         world_size=world_size,
         device=device,
         prompt_compiler=prompt_compiler,
+        prompt_wav_path=checkpointing_config.validation_prompt_wav,
+        prompt_text=checkpointing_config.validation_prompt_text,
+        phrases=checkpointing_config.validation_test_phrases,
+        codec_encoder_checkpoint_path=checkpointing_config.codec_encoder_checkpoint_path,
+        codec_decoder_checkpoint_path=checkpointing_config.codec_decoder_checkpoint_path,
     )
+
