@@ -185,6 +185,9 @@
         "INF_FREQ_PENALTY    = 0.3   # ลงโทษตามความถี่ (ป้องกัน Token วนซ้ำ)\n",
         "                            # ↑ 0.3 = ลงโทษเบาๆ\n",
         "                            #   (ค่าเริ่มต้นเจ้าของโปรเจค: 0.3)\n",
+        "INF_USE_VLLM        = True  # เร่งความเร็ว Inference 2x-5x ด้วย vLLM\n",
+        "                            # ↑ True = แนะนำถ้า VRAM ว่างพอ\n",
+        "                            #   False = ปลอดภัยกว่าถ้าเจอ OOM\n",
         "\n",
         "# --- 📝 Inference Test Text ---\n",
         "TEXT_TO_SPEAK   = 'วันนี้อากาศดีมากเลยครับ ออกไปเดินเล่นกันไหม'\n",
@@ -194,7 +197,7 @@
         "print(f'📐 Estimated steps: ~{int(9294 * NUM_EPOCHS / BATCH_SIZE / 2 / GRAD_ACCUM)} steps ({NUM_EPOCHS} epochs)')\n",
         "print(f'📐 Estimated time: ~{int(9294 * NUM_EPOCHS / BATCH_SIZE / 2 / GRAD_ACCUM * 2.5 / 60)} minutes')\n",
         "print(f'📐 LoRA params: ~{int(LORA_R * 1.75)}M (r={LORA_R})')\n",
-        "print(f'🎤 Inference: temp={INF_TEMPERATURE}, rep_penalty={INF_REP_PENALTY}, min_tokens={INF_MIN_TOKENS}')\n"
+        "print(f'🎤 Inference: temp={INF_TEMPERATURE}, rep_penalty={INF_REP_PENALTY}, vLLM={INF_USE_VLLM}')\n"
       ]
     },
     {
@@ -239,6 +242,9 @@
         "\n",
         "# ติดตั้ง pythainlp สำหรับ Text Normalization ภาษาไทย\n",
         "!pip install pythainlp --quiet\n",
+        "\n",
+        "# ติดตั้ง vLLM สำหรับเร่งความเร็ว Inference\n",
+        "!pip install vllm==0.10.0 --quiet 2>&1 | tail -3\n",
         "\n",
         "# ติดตั้ง flash-attn สำหรับการ Attention ที่เร็วกว่า (ถ้า build ไม่ผ่านก็ไม่เป็นไร จะ fallback อัตโนมัติ)\n",
         "!pip install flash-attn --no-build-isolation --quiet 2>&1 | tail -3 || echo 'flash-attn build failed, will use default attention.'\n",
@@ -660,6 +666,7 @@
         "    --text=\"{TEXT_TO_SPEAK}\" \\\n",
         "    --output_path={OUTPUT_WAV} \\\n",
         "    --enable_text_normalization=true \\\n",
+        "    --use_vllm={str(INF_USE_VLLM).lower()} \\\n",
         "    --language={LANGUAGE} \\\n",
         "    --temperature={INF_TEMPERATURE} \\\n",
         "    --max_tokens={INF_MAX_TOKENS} \\\n",
