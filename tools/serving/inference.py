@@ -203,7 +203,9 @@ def main(argv: list[str]) -> None:
     output_wav = inference_result.wav
 
     # Create output directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
     import soundfile as sf
     sf.write(output_path, output_wav.squeeze().cpu().numpy(), audio_decoder.sample_rate)
 

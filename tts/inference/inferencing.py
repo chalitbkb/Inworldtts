@@ -144,9 +144,20 @@ def _synthesize_audio(
 
     # Convert string speech tokens to speech token ids.
     if use_vllm:
-        speech_tokens_str = tokenizer.convert_ids_to_tokens(generated_ids.tolist(), skip_special_tokens=True)
+        # vLLM returns flat token IDs — decode each one individually to get
+        # per-token strings like '<|s_12345|>'. batch_decode on a 1D tensor
+        # would concatenate them into one big string, which is wrong.
+        speech_tokens_str = [
+            tokenizer.decode([tid], skip_special_tokens=True)
+            for tid in generated_ids.tolist()
+        ]
+        new_speech_ids = extract_speech_ids(speech_tokens_str)
+        logging.info("DEBUG: vLLM decoded %d token strings, extracted %d valid speech IDs",
+                     len(speech_tokens_str), len(new_speech_ids))
+        if len(speech_tokens_str) > 0:
+            logging.info("DEBUG: first 5 decoded tokens: %s", speech_tokens_str[:5])
         # append the prompt speech ids to the generated speech ids
-        speech_tokens = torch.tensor(speech_ids + extract_speech_ids(speech_tokens_str))
+        speech_tokens = torch.tensor(speech_ids + new_speech_ids)
     else:
         # Keep only the audio tokens (skip input prompt ids, and skip the eos_token id).
         new_token_count = generated_ids.shape[0] - input_ids.shape[1]
@@ -157,7 +168,7 @@ def _synthesize_audio(
 
         # Extract the speech token strings. Direct use of the output tokens
         # is dangerous, as there might be non-speech tokens in the output.
-        speech_tokens_str = tokenizer.convert_ids_to_tokens(generated_ids.tolist(), skip_special_tokens=True)
+        speech_tokens_str = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
         new_speech_ids = extract_speech_ids(speech_tokens_str)
         logging.info("DEBUG: decoded %d token strings, extracted %d valid speech IDs",
                      len(speech_tokens_str), len(new_speech_ids))
@@ -165,8 +176,13 @@ def _synthesize_audio(
             logging.info("DEBUG: first 5 decoded tokens: %s", speech_tokens_str[:5])
         speech_tokens = torch.tensor(speech_ids + new_speech_ids)
 
+    # Safety check: if no new speech tokens were generated, the model didn't learn properly.
+    new_count = len(speech_tokens) - len(speech_ids)
+    if new_count == 0:
+        logging.error("CRITICAL: Model generated 0 valid speech tokens! "
+                      "The model likely needs more training or was trained with empty data.")
     logging.info("DEBUG: total speech_tokens for decoder: %d (prompt: %d + new: %d)",
-                 len(speech_tokens), len(speech_ids), len(speech_tokens) - len(speech_ids))
+                 len(speech_tokens), len(speech_ids), new_count)
 
     # Decode the speech tokens to speech waveform.
     with custom_logging.Timer() as timer:
