@@ -66,6 +66,29 @@ _LANGUAGE = flags.DEFINE_string(
     "language", "th",
     "Language code for text normalization (e.g., 'en', 'th')")
 
+# Inference generation flags (defaults match InferenceSettings class defaults)
+_TEMPERATURE = flags.DEFINE_float(
+    "temperature", 0.8,
+    "Sampling temperature (lower = more deterministic, higher = more random)")
+_MAX_TOKENS = flags.DEFINE_integer(
+    "max_tokens", 1792,
+    "Maximum number of speech tokens to generate")
+_MIN_TOKENS = flags.DEFINE_integer(
+    "min_tokens", 10,
+    "Minimum number of speech tokens to generate")
+_TOP_P = flags.DEFINE_float(
+    "top_p", 1.0,
+    "Nucleus sampling: cumulative probability threshold")
+_TOP_K = flags.DEFINE_integer(
+    "top_k", 50,
+    "Top-K sampling: number of top tokens to consider")
+_REPETITION_PENALTY = flags.DEFINE_float(
+    "repetition_penalty", 1.1,
+    "Penalty for repeating tokens (1.0 = disabled)")
+_FREQUENCY_PENALTY = flags.DEFINE_float(
+    "frequency_penalty", 0.3,
+    "Penalty based on token frequency (0.0 = disabled)")
+
 
 def main(argv: list[str]) -> None:
     del argv  # Unused.
@@ -144,16 +167,16 @@ def main(argv: list[str]) -> None:
     prompt_wav, _ = data_utils.load_wav(
         prompt_wav_path, target_sample_rate=constants.CODEC_SAMPLE_RATE)
 
-    # Inference settings
+    # Inference settings (from CLI flags, controllable via Notebook Control Panel)
     inference_settings = inferencing.InferenceSettings(
-        temperature=0.9,
-        max_tokens=1792,
-        min_tokens=200,
-        top_p=0.95,
-        top_k=50,
-        repetition_penalty=1.2,
-        frequency_penalty=0.3,
-        seed=42,
+        temperature=_TEMPERATURE.value,
+        max_tokens=_MAX_TOKENS.value,
+        min_tokens=_MIN_TOKENS.value,
+        top_p=_TOP_P.value,
+        top_k=_TOP_K.value,
+        repetition_penalty=_REPETITION_PENALTY.value,
+        frequency_penalty=_FREQUENCY_PENALTY.value,
+        seed=seed,
     )
 
     audio_prompt_transcription = prompt_transcription
