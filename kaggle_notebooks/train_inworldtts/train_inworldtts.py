@@ -250,8 +250,8 @@
         "!pip install vllm==0.10.0 --quiet 2>&1 | tail -3\n",
         "\n",
         "# ติดตั้ง flash-attn เวอร์ชันที่เข้ากันได้กับ xformers บน T4\n",
-        "# ⚠️ xformers ต้องการ flash-attn >=2.7.1,<=2.8.0 (Kaggle มี 2.8.3 ติดมาซึ่งชนกัน!)\n",
-        "!pip install 'flash-attn>=2.7.1,<=2.8.0' --no-build-isolation --quiet 2>&1 | tail -3 || echo 'flash-attn build failed, will use default attention.'\n",
+        "# ⚠️ xformers ต้องการ flash-attn >=2.7.1,<=2.8.1 (Kaggle มี 2.8.3 ติดมาซึ่งชนกัน!)\n",
+        "!pip install 'flash-attn>=2.7.1,<=2.8.1' --no-build-isolation --quiet 2>&1 | tail -3 || echo 'flash-attn build failed, will use default attention.'\n",
         "\n",
         "print('\\n✅ All dependencies installed!')\n"
       ]
