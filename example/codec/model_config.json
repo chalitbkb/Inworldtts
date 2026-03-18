@@ -1,4 +1,5 @@
 {
+    "model_type": "xcodec2",
     "sample_rate": 16000,
     "token_rate": 50,
     "hop_length": 320,
